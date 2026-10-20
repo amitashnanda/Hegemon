@@ -1,11 +1,10 @@
-title=Hegemon example container registry; processed data must be mounted separately
+title=Hierarchical Exploration of Gene Expression Microarrays Online
 
-[B2.1]
-name= Kim 2010 bladder cancer Overall
+[B1]
+name= Kim 2010 bladder cancer Cancer Specific
 expr= /data/kim-2010-bladder-expr.txt
 index= /data/kim-2010-bladder-idx.txt
 survival= /data/kim-2010-bladder-os.txt
 indexHeader= /data/kim-2010-bladder-ih.txt
-info= /data/kim-2010-bladder-info.txt
 key= bladder:
 source= GSE13507

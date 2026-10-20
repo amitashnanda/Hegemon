@@ -30,7 +30,8 @@ Gene A is plotted on x and Gene B on y. Dataset selection does not automatically
 ## Requirements
 
 - A **Linux** host with an administrator-approved Apptainer installation. No GPU is needed.
-- A readable private registry and approved processed datasets; neither is downloaded or included.
+- Bash, Git, and `sha256sum` for the optional public Kim download; Python 3 on the host is optional for the validation tests.
+- A readable registry and processed datasets. Private lab data are not included; the explicit example setup below downloads only upstream's public Kim files.
 - A writable checkout/runtime directory and space for a substantial scientific dependency image and temporary extraction/build files.
 - Building the dependency image requires internet access and an approved fakeroot/user-namespace setup or an administrator-operated build host. It does not install packages in the host environment.
 
@@ -49,17 +50,39 @@ git clone --branch modern-stack https://github.com/amitashnanda/Hegemon.git
 cd Hegemon
 ```
 
-These commands apply once the prepared branch is published. In an existing clone, stop previews and use `git checkout modern-stack` (compatible with Git 2.17 and newer).
+In an existing clone, stop previews and use `git checkout modern-stack` (compatible with Git 2.17 and newer).
 
-### 2. Configure your private registry
+### 2. Download the public Kim example and select its registry
 
 ```bash
-test -f explore.conf || cp config/explore.conf.example explore.conf
+bash scripts/fetch-kim-example.sh
+mkdir -p runtime/kim-example/container
+test -f runtime/kim-example/container/explore.conf || cp config/explore.conf.example runtime/kim-example/container/explore.conf
+export HEGEMON_CONFIG="$PWD/runtime/kim-example/container/explore.conf"
 ```
 
-Edit the ignored `explore.conf`. Paths must match the **container-side** read-only data locations you will bind. The Kim example assumes `/data/kim-2010-bladder-...`; a `source=GSE13507` accession becomes a dataset-provenance link.
+The explicit download command retrieves only the five public Kim files from [upstream Hegemon](https://github.com/sahoo00/Hegemon/tree/2300b4964c1e79326031a4cef2cc7c192764374b), pinned to revision `2300b4964c1e79326031a4cef2cc7c192764374b` and verified against `config/kim-example.sha256`. Allow approximately **70 MB for the extracted data**, plus temporary Git download space and network access to GitHub. Re-running verifies existing files without overwriting them. Application startup never downloads data.
+
+This example registers **only `B1`**, following upstream's name and four processed-file fields. It adds the category/provenance fields used by this interface. Container paths are intentional: step 4 binds the downloaded host directory at `/data`.
+
+```ini
+title=Hierarchical Exploration of Gene Expression Microarrays Online
+
+[B1]
+name= Kim 2010 bladder cancer Cancer Specific
+expr= /data/kim-2010-bladder-expr.txt
+index= /data/kim-2010-bladder-idx.txt
+survival= /data/kim-2010-bladder-os.txt
+indexHeader= /data/kim-2010-bladder-ih.txt
+key= bladder:
+source= GSE13507
+```
+
+Both the downloaded `data/` and selected registry under `runtime/` stay ignored by Git. Existing root `explore.conf` is not overwritten. For other datasets, select your own ignored registry using `HEGEMON_CONFIG`, and ensure its paths match the **container-side** read-only data locations passed with `--data`. Root `explore.conf` remains the default if `HEGEMON_CONFIG` is unset.
 
 Required expression exploration files are the matrix (`expr`) and matching byte-offset probe index (`index`). Clinical/survival, header annotations, probe information, stored thresholds, and Boolean vectors enable additional features. Companion `*-thr.txt` and `*-bv.txt` may be found from a shared dataset prefix even when not explicit registry lines. Supply a consistent processed dataset, not only the registry.
+
+The public upstream example contains `expr`, `idx`, `os`, `ih`, and `thr`. Its threshold file is inferred from the expression prefix, not a fifth registry field. Upstream does **not** provide `info` or `bv` for this minimal example; features requiring those companions need a separately prepared complete dataset. Existing tutorial screenshots use the lab registry ID `B2.1`; the reproducible upstream example here uses `B1`.
 
 ### 3. Build a dependency image
 
@@ -73,11 +96,11 @@ The default output is ignored `runtime/modern/hegemon-modern.sif`. Set `HEGEMON_
 
 ### 4. Start the local application
 
-Replace the host directory below with the folder containing your approved Kim files:
+Keep the `HEGEMON_CONFIG` export from step 2 in this terminal. For the downloaded public example:
 
 ```bash
 HEGEMON_PORT=8084 bash scripts/run-apptainer.sh \
-  --data /absolute/path/to/processed-kim:/data
+  --data "$PWD/data/kim-2010:/data"
 ```
 
 Open **http://127.0.0.1:8084/Hegemon/index.html** on that Linux host. Keep the terminal open; **Ctrl-C stops the preview**.
@@ -120,9 +143,11 @@ For an already approved native modern stack, `bash scripts/check-stack.sh` and `
 
 The web server here is **PHP's development server inside Apptainer**, using a restrictive router. It is intended for local validation, not public production traffic. `.htaccess` alone is ineffective for this server. Administrator-reviewed production hosting is a separate deployment task.
 
+Build/extraction temporary directories use `TMPDIR` (default `/tmp`). Prefer a writable local temporary disk with sufficient free space; extracting a scientific image onto a shared filesystem can be much slower. This is separate from the ignored application outputs under `HEGEMON_RUNTIME_DIR`.
+
 ## Example Analysis
 
-1. Select **Bladder cancer → View** and the registered Kim 2010 dataset (`B2.1`).
+1. Select **Bladder cancer → View** and **Kim 2010 bladder cancer Cancer Specific** (`B1`).
 2. Inspect dataset information, keep **TYROBP / FCER1G**, and use **Find probes → Explore expressions**.
 3. Hover/zoom or draw a rectangle with **Select samples** to create a population.
 4. Highlight patient information, use group set operations, and run supported population analyses.
@@ -151,14 +176,22 @@ Hegemon/
 
 ## Testing
 
-With the preview and approved Kim files available:
+In a second terminal at this checkout, with the Kim `B1` preview running:
 
 ```bash
 python3 tests/test_packaging.py
-python3 tests/smoke.py --base-url http://127.0.0.1:8084/Hegemon/ --render
+python3 tests/test_kim_example.py
+python3 tests/smoke.py --base-url http://127.0.0.1:8084/Hegemon/ --dataset B1 --render
 ```
 
 The checks exercise page/asset routes, internal-file protection, probe lookup, full sample counts, independent group means, CSV, clinical alignment, error handling, and optional PNG/box/violin/PDF/survival generation. Dataset/probe arguments can select another registered cohort. Optional `scripts/test-browser.sh` needs a separate Playwright/Chromium test environment; see [runtime notes](doc/APPTAINER.md).
+
+For an optional browser workflow check using your approved test environment:
+
+```bash
+HEGEMON_TEST_PYTHON=/path/to/test-environment/bin/python \
+HEGEMON_TEST_BASE_URL=http://127.0.0.1:8084/Hegemon/ bash scripts/test-browser.sh --dataset B1 --key bladder
+```
 
 These are actual-data checks, not a promise that every registry entry or large population has been validated. See [preparation/verification notes](doc/REPOSITORY_PREPARATION.md) for what was actually run. A fresh internet-backed dependency-image build is distinct from testing application source inside an existing compatible dependency image.
 
