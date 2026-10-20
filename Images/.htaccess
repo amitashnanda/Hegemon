@@ -1,0 +1,2 @@
+RewriteEngine On
+RewriteRule ^(.+)$ /Hegemon/assets/images/$1 [R=302,L]

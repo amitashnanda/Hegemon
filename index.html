@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Hegemon helps biologists explore gene expression and Boolean implications.">
+<title>Hegemon · Boolean Lab</title>
+<link rel="stylesheet" href="assets/css/landing.css?v=9f1e03b32c4f">
+<link rel="stylesheet" href="assets/css/dataset-search.css?v=4f70ee3c8fd6">
+<script defer src="assets/js/dataset-search.js?v=ee828dbc5652"></script>
+<script defer src="assets/js/landing.js?v=badaf13be1cd"></script>
+</head>
+<body class="landing-page">
+<a class="skip-link" href="#studies">Skip to studies</a>
+<header class="site-header">
+<a class="lab-logo" href="index.html" aria-label="Boolean Lab home"><img src="assets/images/boolean-lab-website.png" alt="Boolean Lab, UC San Diego" width="72" height="72"><span class="lab-wordmark"><span>Boolean</span> <span>Lab</span></span></a>
+<nav aria-label="Main navigation"><button type="button" id="find-dataset-button" class="find-dataset-button" aria-haspopup="dialog" aria-controls="dataset-search-dialog">Find dataset</button><a href="workspace.html">Explore All</a><a href="stats.php">Stats</a><a href="workspace.html?tool=getIDs">Probe ID</a></nav>
+</header>
+<main>
+<section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title">Hegemon</h1><p>A cutting-edge web-based application designed specifically to aid biologists in analyzing Boolean Implications</p></div></section>
+<section class="studies-section" id="studies" aria-labelledby="studies-title">
+<div class="studies-heading"><h2 id="studies-title">Types of Studies</h2><label class="study-search"><span class="sr-only">Find a study type</span><input id="study-type-search" type="search" placeholder="Find a study type" autocomplete="off"></label></div>
+<div class="study-types" id="study-types" aria-busy="true"><p class="muted">Loading study types…</p></div>
+<p id="landing-status" class="muted" role="status" aria-live="polite" hidden></p>
+</section>
+</main>
+<dialog id="dataset-search-dialog" class="dataset-search-dialog" aria-labelledby="study-heading"><section class="dataset-search-panel">
+<div class="panel-heading"><h2 id="study-heading">Find a dataset</h2><div class="search-heading-actions"><span class="small-badge" id="study-count">—</span><button type="button" class="search-close" id="close-dataset-search" aria-label="Close dataset search">×</button></div></div>
+<p class="dataset-search-help">Search this server’s registry by ID, name, GEO accession, or category. You can also paste a legacy Hegemon dataset link.</p>
+<form id="dataset-search-form"><label class="field-label" for="dataset-search">Dataset or Hegemon link</label><div class="dataset-search-input"><input id="dataset-search" type="search" placeholder="B2.1, GSE13507, bladder, or a Hegemon link" autocomplete="off"><button type="submit">Search</button></div>
+<label class="field-label" for="category-filter">Study category</label><select id="category-filter"><option value="">All categories</option></select>
+<label class="checkbox-label"><input id="available-filter" type="checkbox" checked> Available on this server</label></form>
+<p id="dataset-search-status" class="dataset-search-status" role="status" aria-live="polite" hidden></p>
+<div class="study-list" id="study-list" aria-label="Matching datasets" aria-busy="true"><p class="muted">Loading this server’s study library…</p></div>
+<p class="library-note">Choose a dataset, then find your probes and click Explore expression. Other servers’ personal datasets are not imported by pasting a link.</p>
+</section></dialog>
+<footer class="site-footer">Copyright © 2016 <strong>Author: Debashis Sahoo</strong> — All rights reserved.</footer>
+<noscript><p>Enable JavaScript to browse study types, or <a href="explore.php">open the classic explorer</a>.</p></noscript>
+</body>
+</html>

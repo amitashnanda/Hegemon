@@ -1,0 +1,11 @@
+title=Hegemon example registry; replace these paths with your approved processed files
+
+[B2.1]
+name= Kim 2010 bladder cancer Overall
+expr= /absolute/path/to/kim-2010-bladder-expr.txt
+index= /absolute/path/to/kim-2010-bladder-idx.txt
+survival= /absolute/path/to/kim-2010-bladder-os.txt
+indexHeader= /absolute/path/to/kim-2010-bladder-ih.txt
+info= /absolute/path/to/kim-2010-bladder-info.txt
+key= bladder:
+source= GSE13507

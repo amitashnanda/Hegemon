@@ -1,0 +1,25 @@
+DirectoryIndex index.html
+
+<FilesMatch ".+">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(?i:html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|csv|pdf)$">
+    Require all granted
+</FilesMatch>
+
+<FilesMatch "^(?:api|explore|stats)\.php$">
+    Require all granted
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\. - [F,L]
+    RewriteRule ^(?:app|config|scripts|tests|tools|runtime|containers|data|dataset|datasets)(?:/|$) - [F,L]
+    RewriteRule ^tmpdir/[^/]+\.(?:png|jpg|jpeg|gif|pdf)$ - [L,NC]
+    RewriteRule ^tmpdir(?:/|$) - [F,L]
+    RewriteRule ^(landing|styles|workspace|dataset-search|explore|scientific-results|manual)\.css$ /Hegemon/assets/css/$1.css [R=302,L]
+    RewriteRule ^(app|landing|dataset-search|plot-performance|explore|Groups|Mouse|scientific-results|stats|manual)\.js$ /Hegemon/assets/js/$1.js [R=302,L]
+    RewriteRule ^Images/(.+)$ /Hegemon/assets/images/$1 [R=302,L]
+    RewriteRule ^gtag\.html$ /Hegemon/assets/html/gtag.html [R=302,L]
+</IfModule>

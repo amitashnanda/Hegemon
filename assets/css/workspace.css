@@ -1,0 +1,107 @@
+.workspace-v2 { --ink: #18343c; --muted: #657a80; --purple: #087f8c; --teal: #087f8c; --line: #e0e9e8; background: white; }
+.workspace-v2 .site-header a { color: var(--ink); }
+.workspace-v2 :focus-visible { outline-color: #51b9bd; }
+.workspace-v2 .workspace-breadcrumb { max-width: 1680px; margin: auto; padding: 16px 32px; display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.workspace-v2 .workspace-breadcrumb h1 { font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
+.workspace-v2 .workspace-shell { max-width: 1680px; margin: auto; padding: 0 32px 40px; display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 36px; align-items: start; }
+.workspace-v2 .analysis-nav { position: sticky; top: 20px; padding: 10px 0; display: flex; flex-direction: column; gap: 5px; }
+.workspace-v2 .nav-caption { margin: 0 12px 12px; color: var(--muted); font-size: 10px; letter-spacing: 1.4px; }
+.workspace-v2 .analysis-nav button { padding: 11px 12px; border: 0; text-align: left; font-size: 13px; border-radius: 6px; background: transparent; }
+.workspace-v2 .analysis-nav button[aria-current=page] { color: var(--teal); background: #eaf6f5; font-weight: 650; box-shadow: inset 3px 0 var(--teal); }
+.workspace-v2 .analysis-nav a { font-size: 11px; padding: 12px; margin-top: 14px; border-top: 1px solid var(--line); }
+.workspace-v2 .analysis-nav .manual-link { font-size: 13px; padding: 11px 12px; margin-top: 0; border: 0; border-radius: 6px; color: var(--ink); text-decoration: none; }
+.workspace-v2 .analysis-nav .manual-link:hover { color: var(--teal); background: #eaf6f5; }
+.workspace-v2 .analysis-column { gap: 14px; }
+.workspace-v2 .panel { box-shadow: none; border-radius: 9px; }
+.workspace-v2 .dataset-picker { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
+.workspace-v2 .dataset-picker > label { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.workspace-v2 #dataset-select { padding: 12px; font-size: 14px; }
+.workspace-v2 .dataset-browser > summary { font-size: 12px; cursor: pointer; color: var(--teal); }
+.workspace-v2 .dataset-browser[open] .study-panel { position: absolute; right: 0; top: 80px; z-index: 5; width: min(430px, 100%); box-shadow: 0 12px 36px #18343c20; }
+.workspace-v2 .dataset-browser .study-list { min-height: 0; max-height: 300px; }
+.workspace-v2 .dataset-search-help { margin: 0 0 12px; font-size: 11px; line-height: 1.6; }
+.workspace-v2 #dataset-source { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.workspace-v2 .dataset-source-link { display: inline-flex; padding: 5px 10px; border: 1px solid #b7d8d7; border-radius: 6px; background: #edf7f6; color: var(--teal); font-size: 12px; text-decoration: none; overflow-wrap: anywhere; }
+.workspace-v2 .dataset-source-link:hover { background: #ddf0ee; }
+.workspace-v2 .dataset-information { margin-top: 8px; font-size: 12px; max-width: 680px; }
+.workspace-v2 .dataset-information > summary { display: inline-block; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.workspace-v2 .dataset-information dl, .workspace-v2 .tool-guide dl { display: grid; grid-template-columns: minmax(100px, auto) minmax(0, 1fr); gap: 8px 18px; margin: 14px 0; line-height: 1.6; }
+.workspace-v2 .dataset-information dt, .workspace-v2 .tool-guide dt { font-weight: 600; }
+.workspace-v2 .dataset-information dd, .workspace-v2 .tool-guide dd { margin: 0; overflow-wrap: anywhere; }
+.workspace-v2 .dataset-information > p { font-size: 11px; }
+.workspace-v2 .tool-guide { margin: 18px 0; }
+.workspace-v2 .tool-guide dl { grid-template-columns: 110px minmax(0, 1fr); }
+.workspace-v2 .study-summary { padding: 0; border: 0; background: transparent; }
+.workspace-v2 .study-summary h2 { font-size: 15px; }
+.workspace-v2 .study-summary .eyebrow { display: none; }
+.workspace-v2.has-dataset .study-summary h2 { display: none; }
+.workspace-v2 .status-message { padding: 7px 12px; font-size: 11px; }
+.workspace-v2 .gene-panel { padding: 14px 18px 10px; }
+.workspace-v2 .gene-field > label { margin-bottom: 5px; }
+.workspace-v2 .gene-fields input { padding: 8px 10px !important; }
+.workspace-v2 .gene-field select { padding: 6px 8px; }
+.workspace-v2 .gene-footer { margin-top: 8px; }
+.workspace-v2 .gene-footer .primary-button { padding: 8px 12px; }
+.workspace-v2 .gene-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.workspace-v2 .gene-actions #copy-analysis-link { padding: 8px 12px; font-size: 12px; }
+.workspace-v2 .analysis-link-field { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.workspace-v2 .analysis-link-field input { width: 100%; min-width: 0; font-size: 12px; }
+.workspace-v2 .analysis-link-field p { font-size: 11px; margin-bottom: 0; }
+.workspace-v2 .scientific-settings { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; font-size: 11px; }
+.workspace-v2 summary { cursor: pointer; color: #506a70; }
+.workspace-v2 .scientific-settings > div { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.5fr; gap: 14px; padding: 14px 0 5px; }
+.workspace-v2 .scientific-settings input { margin-top: 5px; }
+.workspace-v2 .expression-layout { display: grid; grid-template-columns: minmax(0, 1fr) 285px; gap: 22px; align-items: start; }
+.workspace-v2 .plot-header { padding: 18px 18px 0; }
+.workspace-v2 .plot-header .eyebrow { display: none; }
+.workspace-v2 .chart-toolbar { padding: 16px 16px 6px; }
+.workspace-v2 .chart-container { padding: 0; min-height: 260px; }
+.workspace-v2 #scatter-chart.is-panning { cursor: grabbing; }
+.workspace-v2 #scatter-chart:focus:not(:focus-visible) { outline: none; }
+.workspace-v2 #scatter-chart:focus-visible { outline: 2px solid #51b9bd; outline-offset: -2px; }
+.workspace-v2 .chart-footer { padding: 12px 18px; gap: 12px; flex-wrap: wrap; }
+.workspace-v2 .plot-legend { padding: 0 18px 14px; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 11px; color: var(--muted); }
+.workspace-v2 .plot-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.workspace-v2 .plot-legend .clinical-swatch { width: 9px; height: 9px; }
+.workspace-v2 .selection-summary { margin: 0; padding: 0 18px 14px; color: #506a70; font-size: 11px; line-height: 1.6; }
+.workspace-v2 .primary-button { background: var(--teal); border-color: var(--teal); }
+.workspace-v2 .primary-button:hover:not(:disabled) { background: #076a75; border-color: #076a75; }
+.workspace-v2 button:hover:not(:disabled), .workspace-v2 .secondary-button:hover { background: #edf7f6; border-color: #a6cccd; }
+.workspace-v2 .primary-button:hover:not(:disabled) { color: white; background: #076a75; }
+.workspace-v2 .mode-buttons button[aria-pressed=true], .workspace-v2 .small-badge { background: #eaf6f5; color: var(--teal); }
+.workspace-v2 .groups-panel { padding: 18px 16px; border: 0; background: #f7faf9; }
+.workspace-v2 .groups-panel .panel-heading { margin-bottom: 9px; }
+.workspace-v2 .group-intro { font-size: 11px; margin-bottom: 10px; }
+.workspace-v2 .group-list { display: block; min-height: 0; max-height: 270px; overflow-y: auto; }
+.workspace-v2 .group-empty { padding: 12px 4px; font-size: 11px; }
+.workspace-v2 .group-row { background: white; margin-bottom: 8px; }
+.workspace-v2 .group-operations { padding-top: 10px; margin-top: 10px; }
+.workspace-v2 .group-operations > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.workspace-v2 .group-operations button { padding: 7px; font-size: 10px; }
+.workspace-v2 .clinical-section { margin-top: 18px; padding-top: 18px; }
+.workspace-v2 .clinical-section h3 { margin-bottom: 10px; }
+.workspace-v2 .clinical-legend { display: flex; gap: 5px; flex-wrap: wrap; margin: 10px 0; max-height: 140px; overflow-y: auto; }
+.workspace-v2 .clinical-legend button { display: inline-flex; gap: 5px; align-items: center; font-size: 10px; padding: 5px 7px; max-width: 100%; overflow-wrap: anywhere; }
+.workspace-v2 .clinical-legend button[aria-pressed=true] { border-color: var(--teal); background: #e4f3f2; }
+.workspace-v2 .clinical-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.workspace-v2 .numeric-legend { width: 100%; font-size: 10px; }
+.workspace-v2 .numeric-gradient { height: 7px; border-radius: 4px; margin: 5px 0; background: linear-gradient(90deg, #5572d0, #10a594); }
+.workspace-v2 .numeric-extents { display: flex; justify-content: space-between; }
+.workspace-v2 .clinical-range { margin-top: 12px; }
+.workspace-v2 .group-extra-tools, .workspace-v2 .group-export { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.workspace-v2 .group-extra-tools summary { font-size: 12px; }
+.workspace-v2 .legacy-tool-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin: 12px 0; }
+.workspace-v2 .legacy-tool-buttons button { font-size: 10px; padding: 6px 8px; }
+.workspace-v2 .population-analysis { border: 1px solid var(--line); border-radius: 8px; }
+.workspace-v2 .population-analysis > summary { padding: 14px 20px; font-size: 13px; }
+.workspace-v2 .population-analysis .analysis-tools { border: 0; padding-top: 8px; }
+.workspace-v2 .advanced-notice { padding: 16px 18px; }
+.workspace-v2 #advanced-frame { width: 100%; height: 720px; border: 0; display: block; }
+.workspace-v2 .references { font-size: 12px; }
+.workspace-v2 .references h2 { margin: 12px 0; font-size: 17px; font-weight: 600; }
+.workspace-v2 .references ol { padding-left: 18px; color: var(--muted); line-height: 1.7; }
+.workspace-v2 .provenance-note { font-size: 10px; }
+.workspace-v2 .site-footer { margin-top: 20px; }
+@media (max-width: 1200px) { .workspace-v2 .workspace-shell { grid-template-columns: 140px minmax(0, 1fr); gap: 22px; padding: 0 24px 35px; } .workspace-v2 .expression-layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; } .workspace-v2 .groups-panel { padding: 16px 12px; } }
+@media (max-width: 1000px) { .workspace-v2 .workspace-shell { display: block; } .workspace-v2 .analysis-nav { position: static; flex-direction: row; flex-wrap: wrap; margin-bottom: 20px; gap: 4px; } .workspace-v2 .analysis-nav .nav-caption { display: none; } .workspace-v2 .analysis-nav a { border: 0; margin: 0; } .workspace-v2 .analysis-nav button { font-size: 12px; padding: 8px 10px; } }
+@media (max-width: 700px) { .workspace-v2 .workspace-breadcrumb { padding: 18px; } .workspace-v2 .workspace-shell { padding: 0 16px 30px; } .workspace-v2 .expression-layout { display: flex; flex-direction: column; } .workspace-v2 .plot-panel, .workspace-v2 .groups-panel { width: 100%; } .workspace-v2 .dataset-picker { grid-template-columns: minmax(0, 1fr); } .workspace-v2 .gene-fields { grid-template-columns: minmax(0, 1fr); } .workspace-v2 .gene-footer { align-items: flex-start; flex-direction: column; } .workspace-v2 .gene-footer .muted { max-width: 100%; } .workspace-v2 .scientific-settings > div { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workspace-v2 .plot-header { gap: 10px; } .workspace-v2 .summary-metrics { display: grid; grid-template-columns: 1fr 1fr; } .workspace-v2 .summary-metrics span { font-size: 10px; } .workspace-v2 .tab-list button { font-size: 10px; } .workspace-v2 .groups-panel { padding: 20px; } .workspace-v2 .group-list { display: block; } .workspace-v2 #advanced-frame { height: 650px; } }
