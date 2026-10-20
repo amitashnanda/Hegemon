@@ -2,7 +2,7 @@
 
 $settings = [
   'HEGEMON_CONFIG' => dirname(__DIR__) . '/explore.conf',
-  'HEGEMON_PYTHON' => 'python2.7',
+  'HEGEMON_PYTHON' => 'python3',
   'HEGEMON_JAVA' => 'java',
   'HEGEMON_R' => 'R',
   'HEGEMON_PDFLATEX' => 'pdflatex',
@@ -12,8 +12,7 @@ $settings = [
   'OMP_NUM_THREADS' => '1',
   'MKL_NUM_THREADS' => '1'
 ];
-
-$local = __DIR__ . '/localstack.local.php';
+$local = __DIR__ . '/runtime.local.php';
 if (is_file($local)) {
   $overrides = require $local;
   if (!is_array($overrides)) { throw new RuntimeException('Local configuration must return an array.'); }

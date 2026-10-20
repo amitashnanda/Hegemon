@@ -6,7 +6,6 @@
   const cards = new Set();
   const queue = [];
   const namespace = 'http://www.w3.org/2000/svg';
-  const plotTools = window.HegemonPlotTools;
   let active = 0;
   let sequence = 0;
 
@@ -162,9 +161,8 @@
     card.record.nameA = response.genes.x.name;
     card.record.nameB = response.genes.y.name;
     card.host.querySelector('h3').textContent = `${card.record.nameA} × ${card.record.nameB}`;
-    const full = plotTools.bounds(samples);
-    const raster = samples.length > plotTools.svgLimit ? new plotTools.RasterPlot() : null;
-    let drawFrame = null;
+    const full = {x: [Math.min(...samples.map(sample => sample.x)) - 0.5, Math.max(...samples.map(sample => sample.x)) + 0.5],
+      y: [Math.min(...samples.map(sample => sample.y)) - 0.5, Math.max(...samples.map(sample => sample.y)) + 0.5]};
     card.domain = {x: [...full.x], y: [...full.y]};
     const chart = svgNode('svg', {class: 'scientific-svg', viewBox: `0 0 ${geometry.width} ${geometry.height}`, role: 'img', tabindex: '0',
       'aria-label': `Interactive plot of ${card.record.probeA} versus ${card.record.probeB}`});
@@ -206,18 +204,8 @@
     }
 
     function draw() {
-      if (!raster) { drawNow(); return; }
-      if (drawFrame === null) drawFrame = requestAnimationFrame(() => {
-        drawFrame = null;
-        if (card.host.isConnected) drawNow();
-      });
-    }
-
-    function drawNow() {
       drawing.replaceChildren();
       chart.dataset.bounds = JSON.stringify(card.domain);
-      chart.dataset.renderer = raster ? 'canvas' : 'svg';
-      chart.dataset.sampleCount = String(samples.length);
       const marks = svgNode('g', {'clip-path': `url(#${clipId})`});
       for (const axis of ['x', 'y']) {
         for (let index = 0; index <= 5; index++) {
@@ -238,10 +226,7 @@
           }
         }
       }
-      if (raster) {
-        marks.append(raster.element);
-        raster.draw(samples, geometry, card.domain, sample => ({color: sample.color || '#0000FF', radius: 3.5, opacity: 1}));
-      } else for (const sample of samples) {
+      for (const sample of samples) {
         const point = svgNode('circle', {class: 'scientific-point', cx: project('x', sample.x), cy: project('y', sample.y), r: 3.5,
           fill: sample.color || '#0000FF', 'data-sample-id': sample.id, 'data-x': sample.x, 'data-y': sample.y});
         const description = `${sample.id} · ${response.genes.x.id}: ${sample.x} · ${response.genes.y.id}: ${sample.y}`;
@@ -312,14 +297,8 @@
       chart.setPointerCapture(event.pointerId);
     });
     chart.addEventListener('pointermove', event => {
+      if (!start) return;
       const current = position(event);
-      if (!start) {
-        if (raster) {
-          const sample = current.inside ? raster.hitTest(current.x, current.y) : null;
-          card.status.textContent = sample ? `${sample.id} · ${response.genes.x.id}: ${sample.x} · ${response.genes.y.id}: ${sample.y}` : hint;
-        }
-        return;
-      }
       for (const [name, value] of Object.entries({x: Math.min(start.x, current.x), y: Math.min(start.y, current.y), width: Math.abs(current.x - start.x), height: Math.abs(current.y - start.y)})) brush.setAttribute(name, value);
       brush.removeAttribute('hidden');
     });
@@ -335,7 +314,6 @@
     });
     chart.addEventListener('pointercancel', cancelDrag);
     chart.addEventListener('lostpointercapture', cancelDrag);
-    chart.addEventListener('pointerleave', () => { card.status.textContent = hint; });
     chart.addEventListener('wheel', event => {
       const pointer = position(event);
       if (!pointer.inside || !Number.isFinite(event.deltaY) || !event.deltaY) return;
@@ -373,8 +351,8 @@
   async function loadInteractive(card) {
     try {
       const response = await schedule(async () => {
-        const query = new URLSearchParams({action: 'plot', compact: '1', ...parameters(card.record)});
-        return plotTools.decode(await (await successful(await fetch(`api.php?${query}`, {signal: card.controller.signal}))).json());
+        const query = new URLSearchParams({action: 'plot', ...parameters(card.record)});
+        return (await successful(await fetch(`api.php?${query}`, {signal: card.controller.signal}))).json();
       });
       if (card.host.isConnected) renderInteractive(card, response);
     } catch (error) { failure(card, error); }

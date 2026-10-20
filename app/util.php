@@ -796,7 +796,7 @@ fig.savefig('$outprefix.png', dpi=100)
       list($id, $time, $status) = array($items[0], $items[1], $items[2]);
       $time = preg_replace('/\s/i', '', $time);
       $status = preg_replace('/\s/i', '', $status);
-      if (localstackIsNumeric($time) && is_finite((float) $time) && (float) $time >= 0 && in_array($status, ['0', '1'], true)) {
+      if (is_numeric($time) && is_finite((float) $time) && (float) $time >= 0 && in_array($status, ['0', '1'], true)) {
         $timehash[$id] = $time;
         $statushash[$id] = $status;
       }
@@ -873,7 +873,7 @@ fig.savefig('$outprefix.png', dpi=100)
         $x_min - 0.5 , $x_max + 0.5, $y_min - 0.5, $y_max + 0.5, $outprefix);
     fclose($fp);
 
-    $cmd = "HOME=tmpdir ". escapeshellarg(getenv("HEGEMON_PYTHON") ?: "/usr/bin/python") ." $outfile";
+    $cmd = "HOME=tmpdir ". escapeshellarg(getenv("HEGEMON_PYTHON") ?: "python3") ." $outfile";
 
     if ( ($fh = popen($cmd, 'w')) === false )
       die("Open failed: subprocess error\n");
@@ -2262,7 +2262,7 @@ anova & Pr(\$>\$F) & F Value \\\\
       self::writeMatAbsolutePDF($fp1, $x_id, $x_name, $y_id, $y_name, 
         $x_min - 0.5 , $x_max + 0.5, $y_min - 0.5, $y_max + 0.5, $outprefix);
       fclose($fp1);
-      $cmd = "HOME=tmpdir ". escapeshellarg(getenv("HEGEMON_PYTHON") ?: "/usr/bin/python") ." $ofile";
+      $cmd = "HOME=tmpdir ". escapeshellarg(getenv("HEGEMON_PYTHON") ?: "python3") ." $ofile";
       if ( ($fh = popen($cmd, 'w')) === false )
         die("Open failed: subprocess error\n");
       pclose($fh);

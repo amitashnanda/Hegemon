@@ -4,7 +4,6 @@ ini_set('display_errors', '0');
 require_once __DIR__ . '/util.php';
 require_once __DIR__ . '/hegemon.php';
 require_once __DIR__ . '/groups.php';
-require_once __DIR__ . '/metadata-cache.php';
 chdir(dirname(__DIR__));
 
 class HegemonApiError extends RuntimeException {
@@ -52,28 +51,28 @@ function apiExecutable($name, $fallback) {
 }
 
 function apiSurvivalAvailable($dataset) {
+  static $available = [];
   $path = $dataset->getSurv();
+  if (array_key_exists($path, $available)) { return $available[$path]; }
+  $available[$path] = false;
   if (!$path || !is_readable($path)) { return false; }
-  return apiCachedValue('survival-available-v1', $path, static function () use ($path) {
-    $available = false;
-    $handle = fopen($path, 'r');
-    $header = localstackCsvRead($handle, "\t");
-    if (count($header ?: []) >= 3) {
-      while (($row = apiReadClinicalPrefix($handle, 3)) !== false) {
-        if (localstackIsNumeric($row[1] ?? '') && is_finite((float) $row[1]) && (float) $row[1] >= 0 && in_array(trim($row[2] ?? ''), ['0', '1'], true)) {
-          $available = true;
-          break;
-        }
+  $handle = fopen($path, 'r');
+  $header = fgetcsv($handle, 0, "\t", '"', '');
+  if (count($header ?: []) >= 3) {
+    while (($row = fgetcsv($handle, 0, "\t", '"', '')) !== false) {
+      if (is_numeric($row[1] ?? '') && is_finite((float) $row[1]) && (float) $row[1] >= 0 && in_array(trim($row[2] ?? ''), ['0', '1'], true)) {
+        $available[$path] = true;
+        break;
       }
     }
-    fclose($handle);
-    return $available;
-  });
+  }
+  fclose($handle);
+  return $available[$path];
 }
 
 function apiCapabilities($dataset) {
   $clinical = is_readable($dataset->getSurv());
-  $python = apiExecutable('HEGEMON_PYTHON', '/usr/bin/python');
+  $python = apiExecutable('HEGEMON_PYTHON', 'python3');
   $hasR = apiExecutable('HEGEMON_R', 'R');
   return [
     'expression' => is_readable($dataset->getExpr()) && is_readable($dataset->getIdx()),
@@ -92,15 +91,14 @@ function apiCapabilities($dataset) {
   ];
 }
 
-function apiDatasetInfo($dataset, $hegem = null, $capabilities = true) {
-  $info = [
+function apiDatasetInfo($dataset, $hegem = null) {
+  $hegem = $hegem ?: new Hegemon($dataset);
+  return [
     'id' => $dataset->getID(), 'name' => $dataset->getName(),
-    'source' => $dataset->getSource(), 'sampleCount' => $hegem ? $hegem->getNum() : apiSampleCount($dataset),
+    'source' => $dataset->getSource(), 'sampleCount' => $hegem->getNum(),
     'keys' => array_values(array_filter(explode(':', $dataset->get('key')))),
-    'available' => true
+    'available' => true, 'capabilities' => apiCapabilities($dataset)
   ];
-  if ($capabilities) { $info['capabilities'] = apiCapabilities($dataset); }
-  return $info;
 }
 
 function apiGetDataset($database, $request) {
@@ -115,29 +113,27 @@ function apiGetDataset($database, $request) {
   apiFail('dataset_not_found', 'No visible registered dataset has this ID.', 404);
 }
 
-function apiHegemon($dataset, $loadIndex = true) {
+function apiHegemon($dataset) {
   $hegem = new Hegemon($dataset);
-  if ($loadIndex) {
-    $hegem->init();
-    if ($dataset->hasPlatform() && is_readable($dataset->getPlatform())) { $hegem->initPlatform(); }
-  }
+  $hegem->init();
+  if ($dataset->hasPlatform() && is_readable($dataset->getPlatform())) { $hegem->initPlatform(); }
   if ($hegem->getNum() <= 0) { apiFail('invalid_dataset', 'The dataset has no sample columns.', 422); }
   return $hegem;
 }
 
-function apiClinical($hegem, $selectedIDs = null) {
+function apiClinical($hegem) {
   $path = $hegem->getSurv();
   if (!$path || !is_readable($path)) { return ['fields' => [], 'rows' => []]; }
   $handle = fopen($path, 'r');
-  $header = localstackCsvRead($handle, "\t");
+  $header = fgetcsv($handle, 0, "\t", '"', '');
   $fields = [];
   foreach (($header ?: []) as $index => $name) {
     if ($index > 0) { $fields[] = ['id' => (string) $index, 'name' => $name]; }
   }
-  $samples = array_fill_keys($selectedIDs === null ? array_slice($hegem->headers, 2) : $selectedIDs, true);
+  $samples = array_fill_keys(array_slice($hegem->headers, 2), true);
   $rows = [];
-  while (($row = $selectedIDs === null ? localstackCsvRead($handle, "\t") : apiReadClinicalPrefix($handle, 3)) !== false) {
-    if (isset($samples[$row[0] ?? ''])) { $rows[$row[0]] = $selectedIDs === null ? $row : array_slice($row, 0, 3); }
+  while (($row = fgetcsv($handle, 0, "\t", '"', '')) !== false) {
+    if (isset($samples[$row[0] ?? ''])) { $rows[$row[0]] = $row; }
   }
   fclose($handle);
   return ['fields' => $fields, 'rows' => $rows];
@@ -159,19 +155,16 @@ function apiProbe($hegem, $query) {
       $values = explode("\t", rtrim($line, "\r\n"));
       if ($values[0] !== $id || count($values) < 5) { continue; }
       $candidate = array_slice($values, 1, 4);
-      if (count(array_filter($candidate, static function ($value) { return localstackIsNumeric($value) && is_finite((float) $value); })) === 4) { $threshold = array_map('floatval', $candidate); }
+      if (count(array_filter($candidate, static function ($value) { return is_numeric($value) && is_finite((float) $value); })) === 4) { $threshold = array_map('floatval', $candidate); }
       break;
     }
     fclose($handle);
   }
   $source = $threshold === null ? 'computed' : 'file';
   if ($threshold === null) {
-    $numeric = array_values(array_filter(array_slice($row, 2), static function ($value) { return localstackIsNumeric($value) && is_finite((float) $value); }));
+    $numeric = array_values(array_filter(array_slice($row, 2), static function ($value) { return is_numeric($value) && is_finite((float) $value); }));
     if (!$numeric) { apiFail('missing_expression', 'The selected probe has no numeric expression values.', 422); }
     $threshold = U::getThrData($numeric, 0, count($numeric));
-  }
-  for ($index = 2; $index < count($row); $index++) {
-    if (localstackIsNumeric($row[$index]) && is_finite((float) $row[$index])) { $row[$index] = (float) $row[$index]; }
   }
   return ['metadata' => [
     'id' => $id, 'name' => $hegem->getName($id), 'description' => $hegem->getDesc($id),
@@ -180,56 +173,31 @@ function apiProbe($hegem, $query) {
   ], 'row' => $row, 'pointer' => $hegem->getPtr($id)];
 }
 
-function apiPair($hegem, $request, $sampleIDs = null, $compact = false) {
+function apiPair($hegem, $request) {
   $geneA = apiString($request, 'geneA');
   $geneB = apiString($request, 'geneB');
   if ($geneA === '' || $geneB === '') { apiFail('missing_genes', 'Choose both genes.'); }
   $probeA = apiProbe($hegem, $geneA);
   $probeB = apiProbe($hegem, $geneB);
-  if ($sampleIDs === []) { return ['x' => $probeA, 'y' => $probeB, 'samples' => []]; }
-  $selected = $sampleIDs === null ? null : array_fill_keys($sampleIDs, true);
-  $survivalSamples = array_fill_keys(apiSurvivalSampleIDs($hegem->rdataset), true);
+  $population = U::getPArray($hegem->getSurv(), $hegem->headers, '');
   $samples = [];
-  $columns = ['id' => [], 'x' => [], 'y' => [], 'hasSurvival' => []];
   for ($index = 2; $index < count($hegem->headers); $index++) {
-    if ($selected !== null && !isset($selected[$hegem->headers[$index]])) { continue; }
     $valueA = $probeA['row'][$index];
     $valueB = $probeB['row'][$index];
-    $hasSurvival = isset($survivalSamples[$hegem->headers[$index]]);
-    if ($compact) {
-      $columns['id'][] = $hegem->headers[$index];
-      $columns['x'][] = localstackIsNumeric($valueA) && is_finite((float) $valueA) ? (float) $valueA : null;
-      $columns['y'][] = localstackIsNumeric($valueB) && is_finite((float) $valueB) ? (float) $valueB : null;
-      $columns['hasSurvival'][] = $hasSurvival;
-      continue;
-    }
     $samples[] = [
       'id' => $hegem->headers[$index],
-      'x' => localstackIsNumeric($valueA) && is_finite((float) $valueA) ? (float) $valueA : null,
-      'y' => localstackIsNumeric($valueB) && is_finite((float) $valueB) ? (float) $valueB : null,
-      'color' => U::getColor($hasSurvival ? 0 : 1),
-      'hasSurvival' => $hasSurvival
+      'x' => is_numeric($valueA) && is_finite((float) $valueA) ? (float) $valueA : null,
+      'y' => is_numeric($valueB) && is_finite((float) $valueB) ? (float) $valueB : null,
+      'color' => U::getColor($population[$index]),
+      'hasSurvival' => $population[$index] === 0
     ];
   }
-  return ['x' => $probeA, 'y' => $probeB, 'samples' => $samples, 'sampleColumns' => $compact ? $columns : null];
-}
-
-function apiStreamSamples($metadata, $columns) {
-  ob_clean();
-  header('Content-Type: application/json; charset=utf-8');
-  echo substr(localstackJsonEncode(['ok' => true] + $metadata, JSON_INVALID_UTF8_SUBSTITUTE), 0, -1) . ',"samples":[';
-  for ($index = 0; $index < count($columns['id']); $index++) {
-    if ($index > 0) { echo ','; }
-    echo localstackJsonEncode(['id' => $columns['id'][$index], 'x' => $columns['x'][$index], 'y' => $columns['y'][$index],
-      'color' => $metadata['defaultColors'][$columns['hasSurvival'][$index] ? 0 : 1]['color'],
-      'hasSurvival' => $columns['hasSurvival'][$index]], JSON_INVALID_UTF8_SUBSTITUTE);
-  }
-  echo ']}';
+  return ['x' => $probeA, 'y' => $probeB, 'samples' => $samples];
 }
 
 function apiSampleIDs($request, $hegem, $name = 'samples') {
   $selected = $request[$name] ?? [];
-  if (!is_array($selected) || count($selected) > $hegem->getNum()) { apiFail('invalid_samples', 'Supply an array of sample IDs.'); }
+  if (!is_array($selected) || count($selected) > 100000) { apiFail('invalid_samples', 'Supply an array of sample IDs.'); }
   $known = array_fill_keys(array_slice($hegem->headers, 2), true);
   $result = [];
   foreach ($selected as $sample) {
@@ -291,7 +259,7 @@ function apiFigure($hegem, $pair, $request) {
   if ($request['statistics'] ?? false) {
     $sthr = apiString($request, 'sthr', '3', 40);
     $pthr = apiString($request, 'pthr', '0.1', 40);
-    if (!localstackIsNumeric($sthr) || !localstackIsNumeric($pthr) || !is_finite((float) $sthr) || !is_finite((float) $pthr) || $sthr < 0 || $pthr < 0 || $pthr > 1) { apiFail('invalid_threshold', 'Use nonnegative SThr and PThr between zero and one.'); }
+    if (!is_numeric($sthr) || !is_numeric($pthr) || !is_finite((float) $sthr) || !is_finite((float) $pthr) || $sthr < 0 || $pthr < 0 || $pthr > 1) { apiFail('invalid_threshold', 'Use nonnegative SThr and PThr between zero and one.'); }
     $rowA = $pair['x']['row'];
     $rowB = $pair['y']['row'];
     $thresholdA = U::getThreshold($rowA, 2, count($rowA) - 2)[1];
@@ -306,15 +274,13 @@ function apiFigure($hegem, $pair, $request) {
   }
   $payload = ['dataset' => ['id' => $hegem->rdataset->getID(), 'name' => $hegem->rdataset->getName()],
     'genes' => $genes, 'samples' => $pair['samples'], 'bounds' => $bounds,
-    'sampleColumns' => $pair['sampleColumns'] ?? null,
     'thresholds' => $request['thresholds'] ?? true, 'caption' => $caption];
   $prefix = 'tmpdir/tmp' . bin2hex(random_bytes(16));
   $input = $prefix . '.json';
   $artifact = $prefix . '.' . $format;
   try {
-    if (file_put_contents($input, localstackJsonEncode($payload)) === false) { apiFail('render_failed', 'Unable to prepare the scientific figure.', 503); }
-    $command = implode(' ', array_map('escapeshellarg', [getenv('HEGEMON_PYTHON'), dirname(__DIR__) . '/scripts/python/scatter_export.py', $input, $artifact]));
-    $process = proc_open($command,
+    if (file_put_contents($input, json_encode($payload, JSON_THROW_ON_ERROR)) === false) { apiFail('render_failed', 'Unable to prepare the scientific figure.', 503); }
+    $process = proc_open([getenv('HEGEMON_PYTHON') ?: 'python3', dirname(__DIR__) . '/scripts/python/scatter_export.py', $input, $artifact],
       [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
     if ($process === false) { apiFail('render_failed', 'Unable to start the scientific plotting runtime.', 503); }
     fclose($pipes[0]);
@@ -351,26 +317,21 @@ function apiRender($hegem, $pair, $request, $config) {
   $groups = apiGroups($request, $hegem);
   if ($type !== 'png' && $type !== 'pdf' && !$groups) { apiFail('missing_groups', 'Select sample groups first.'); }
   if ($type === 'survival') {
-    $selected = [];
-    foreach ($groups as $group) { foreach ($group['samples'] as $sample) { $selected[$sample] = true; } }
-    $clinical = apiClinical($hegem, array_keys($selected));
+    $clinical = apiClinical($hegem);
     foreach ($groups as $group) {
       $eligible = 0;
       foreach ($group['samples'] as $sample) {
         $row = $clinical['rows'][$sample] ?? [];
-        if (localstackIsNumeric($row[1] ?? '') && is_finite((float) $row[1]) && (float) $row[1] >= 0 && in_array(trim($row[2] ?? ''), ['0', '1'], true)) { $eligible++; }
+        if (is_numeric($row[1] ?? '') && is_finite((float) $row[1]) && (float) $row[1] >= 0 && in_array(trim($row[2] ?? ''), ['0', '1'], true)) { $eligible++; }
       }
       if ($eligible === 0) { apiFail('missing_survival', 'A selected group has no valid survival measurements. Choose groups with numeric time and binary status.', 422); }
     }
   }
   if ($type === 'boxplot' || $type === 'violin') {
-    $positions = array_flip($hegem->headers);
+    $sampleMap = array_column($pair['samples'], null, 'id');
     foreach ($groups as $group) {
       $eligible = 0;
-      foreach ($group['samples'] as $sample) {
-        $value = $pair['y']['row'][$positions[$sample]];
-        if (localstackIsNumeric($value) && is_finite((float) $value)) { $eligible++; }
-      }
+      foreach ($group['samples'] as $sample) { if ($sampleMap[$sample]['y'] !== null) { $eligible++; } }
       if ($eligible === 0) { apiFail('missing_expression', 'A selected group has no numeric Gene B expression values.', 422); }
     }
   }
@@ -431,23 +392,21 @@ function apiDispatch($request) {
   }
   if (in_array($action, ['export', 'analysis', 'render'], true) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { apiFail('method_not_allowed', 'Use POST for this action.', 405); }
   if ($action === 'datasets' || $action === 'catalogue') {
-    $summary = apiString($request, 'summary', '0', 1);
-    if (!in_array($summary, ['0', '1'], true)) { apiFail('invalid_parameter', 'Invalid summary mode.'); }
     $datasets = [];
     $unavailable = 0;
     foreach ($database->getListKey(apiKeys($request)) as $dataset) {
       if (!is_readable($dataset->getExpr()) || !is_readable($dataset->getIdx())) { $unavailable++; continue; }
-      $info = apiDatasetInfo($dataset, null, $summary !== '1');
+      $info = apiDatasetInfo($dataset);
       if ($info['sampleCount'] > 0) { $datasets[] = $info; } else { $unavailable++; }
     }
     return ['datasets' => $datasets, 'meta' => ['unavailableCount' => $unavailable]];
   }
   $dataset = apiGetDataset($database, $request);
-  if ($action === 'dataset') {
-    return ['dataset' => apiDatasetInfo($dataset), 'clinicalFields' => apiClinicalFields($dataset)];
-  }
-  $hegem = apiHegemon($dataset, !in_array($action, ['dataset', 'clinical'], true));
+  $hegem = apiHegemon($dataset);
   $apiActiveHegemon = $hegem;
+  if ($action === 'dataset') {
+    return ['dataset' => apiDatasetInfo($dataset, $hegem), 'clinicalFields' => apiClinical($hegem)['fields']];
+  }
   if ($action === 'genes') {
     $query = apiString($request, 'q');
     $genes = [];
@@ -461,42 +420,25 @@ function apiDispatch($request) {
     return ['genes' => $genes];
   }
   if ($action === 'clinical') {
+    $clinical = apiClinical($hegem);
     $field = apiString($request, 'field');
-    $known = array_column(apiClinicalFields($hegem), 'id');
+    $known = array_column($clinical['fields'], 'id');
     if (!in_array($field, $known, true)) { apiFail('invalid_field', 'Choose an available clinical field.'); }
-    $clinical = apiClinicalColumn($hegem, (int) $field);
     $values = [];
-    foreach (array_slice($hegem->headers, 2) as $id) { $values[] = ['id' => $id, 'value' => $clinical[$id] ?? '']; }
+    foreach (array_slice($hegem->headers, 2) as $id) { $values[] = ['id' => $id, 'value' => $clinical['rows'][$id][(int) $field] ?? '']; }
     return ['values' => $values];
   }
   if (!in_array($action, ['plot', 'scatter', 'export', 'analysis', 'render'], true)) { apiFail('unknown_action', 'Unknown API action.', 404); }
-  $sampleIDs = null;
-  $validatedGroups = null;
-  if ($action === 'export') { $exportedSamples = apiSampleIDs($request, $hegem); $sampleIDs = []; }
-  if ($action === 'analysis') { $validatedGroups = apiGroups($request, $hegem); $sampleIDs = []; }
-  if ($action === 'render' && ($request['type'] ?? 'png') !== 'figure') {
-    $sampleIDs = [];
-  }
-  $compact = apiString($request, 'compact', '0', 1);
-  if (!in_array($compact, ['0', '1'], true)) { apiFail('invalid_parameter', 'Invalid compact mode.'); }
-  $columnar = (($compact === '1' || $hegem->getNum() > 5000) && in_array($action, ['plot', 'scatter'], true)) ||
-    ($action === 'render' && ($request['type'] ?? 'png') === 'figure');
-  $pair = apiPair($hegem, $request, $sampleIDs, $columnar);
+  $pair = apiPair($hegem, $request);
   if ($action === 'export') {
-    $selected = array_fill_keys($exportedSamples, true);
+    $selected = array_fill_keys(apiSampleIDs($request, $hegem), true);
     ob_clean();
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="Hegemon-selected-samples.csv"');
     $output = fopen('php://output', 'w');
-    localstackCsvWrite($output, ['ArrayID', $pair['x']['metadata']['id'], $pair['y']['metadata']['id']]);
-    for ($sampleIndex = 2; $sampleIndex < count($hegem->headers); $sampleIndex++) {
-      $identifier = $hegem->headers[$sampleIndex];
-      if (!isset($selected[$identifier])) { continue; }
-      $valueA = $pair['x']['row'][$sampleIndex];
-      $valueB = $pair['y']['row'][$sampleIndex];
-      localstackCsvWrite($output, [$identifier,
-        localstackIsNumeric($valueA) && is_finite((float) $valueA) ? (float) $valueA : null,
-        localstackIsNumeric($valueB) && is_finite((float) $valueB) ? (float) $valueB : null]);
+    fputcsv($output, ['ArrayID', $pair['x']['metadata']['id'], $pair['y']['metadata']['id']], ',', '"', '');
+    foreach ($pair['samples'] as $sample) {
+      if (isset($selected[$sample['id']])) { fputcsv($output, [$sample['id'], $sample['x'], $sample['y']], ',', '"', ''); }
     }
     fclose($output);
     return null;
@@ -504,23 +446,19 @@ function apiDispatch($request) {
   if ($action === 'render') { apiRender($hegem, $pair, $request, $config); return null; }
   if ($action === 'analysis') {
     $summaries = [];
-    $positions = array_flip($hegem->headers);
-    foreach ($validatedGroups as $group) {
+    $sampleMap = array_column($pair['samples'], null, 'id');
+    foreach (apiGroups($request, $hegem) as $group) {
       $valuesX = []; $valuesY = [];
       foreach ($group['samples'] as $id) {
-        $valueA = $pair['x']['row'][$positions[$id]];
-        $valueB = $pair['y']['row'][$positions[$id]];
-        if (localstackIsNumeric($valueA) && is_finite((float) $valueA)) { $valuesX[] = (float) $valueA; }
-        if (localstackIsNumeric($valueB) && is_finite((float) $valueB)) { $valuesY[] = (float) $valueB; }
+        if ($sampleMap[$id]['x'] !== null) { $valuesX[] = $sampleMap[$id]['x']; }
+        if ($sampleMap[$id]['y'] !== null) { $valuesY[] = $sampleMap[$id]['y']; }
       }
       $summary = ['name' => $group['name'], 'sampleCount' => count($group['samples'])];
       foreach (['x' => $valuesX, 'y' => $valuesY] as $axis => $values) {
         sort($values, SORT_NUMERIC);
-        $valueCount = count($values);
-        $middle = intdiv($valueCount, 2);
-        $summary[$axis] = ['n' => $valueCount, 'mean' => $values ? array_sum($values) / $valueCount : null,
-          'median' => $values ? ($valueCount % 2 ? $values[$middle] : ($values[$middle - 1] + $values[$middle]) / 2) : null,
-          'min' => $values ? $values[0] : null, 'max' => $values ? $values[$valueCount - 1] : null];
+        $summary[$axis] = ['n' => count($values), 'mean' => $values ? array_sum($values) / count($values) : null,
+          'median' => $values ? U::median($values, 0, count($values) - 1) : null,
+          'min' => $values ? min($values) : null, 'max' => $values ? max($values) : null];
       }
       $summaries[] = $summary;
     }
@@ -528,13 +466,11 @@ function apiDispatch($request) {
   }
   $parameters = ['id' => $dataset->getID(), 'A' => $pair['x']['metadata']['id'], 'B' => $pair['y']['metadata']['id'], 'cmd' => 'explore', 'key' => apiString($request, 'key')];
   $plot = ['go' => 'plot', 'key' => apiString($request, 'key'), 'id' => $dataset->getID(), 'x' => $pair['x']['pointer'], 'y' => $pair['y']['pointer'], 'xn' => $pair['x']['metadata']['name'], 'yn' => $pair['y']['metadata']['name']];
-  $metadata = ['dataset' => apiDatasetInfo($dataset, $hegem), 'genes' => ['x' => $pair['x']['metadata'], 'y' => $pair['y']['metadata']],
+  return ['dataset' => apiDatasetInfo($dataset, $hegem), 'genes' => ['x' => $pair['x']['metadata'], 'y' => $pair['y']['metadata']],
+    'samples' => $pair['samples'],
     'defaultColors' => [['color' => U::getColor(0), 'label' => 'With survival time and status'],
       ['color' => U::getColor(1), 'label' => 'Without survival time and status']],
     'plotUrl' => 'explore.php?' . http_build_query($plot), 'classicUrl' => 'explore.php?' . http_build_query($parameters)];
-  if ($compact === '1') { return $metadata + ['sampleColumns' => $pair['sampleColumns']]; }
-  if ($pair['sampleColumns'] !== null) { apiStreamSamples($metadata, $pair['sampleColumns']); return null; }
-  return $metadata + ['samples' => $pair['samples']];
 }
 
 ob_start();
@@ -556,7 +492,7 @@ try {
   if ($response !== null) {
     ob_clean();
     header('Content-Type: application/json; charset=utf-8');
-    echo localstackJsonEncode(['ok' => true] + $response, JSON_INVALID_UTF8_SUBSTITUTE);
+    echo json_encode(['ok' => true] + $response, JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
   }
 } catch (Throwable $error) {
   ob_clean();
@@ -566,22 +502,5 @@ try {
   if (!$expected) { error_log((string) $error); }
   echo json_encode(['ok' => false, 'error' => ['code' => $expected ? $error->errorCode : 'internal_error',
     'message' => $expected ? $error->getMessage() : 'The server could not complete this analysis.']], JSON_INVALID_UTF8_SUBSTITUTE);
-}
-if (function_exists('gzencode') && !ini_get('zlib.output_compression') && !headers_sent()) {
-  $acceptsGzip = preg_match('/(?:^|,)\s*gzip\s*(?:;\s*q=(0(?:\.\d+)?|1(?:\.0+)?))?\s*(?=,|$)/i', $_SERVER['HTTP_ACCEPT_ENCODING'] ?? '', $encoding);
-  $json = false;
-  foreach (headers_list() as $header) {
-    if (stripos($header, 'Content-Type: application/json') === 0) { $json = true; }
-  }
-  if ($json && $acceptsGzip && (!isset($encoding[1]) || (float) $encoding[1] > 0)) {
-    $compressed = gzencode(ob_get_contents(), 6);
-    if ($compressed !== false) {
-      ob_clean();
-      header('Content-Encoding: gzip');
-      header('Vary: Accept-Encoding', false);
-      header('Content-Length: ' . strlen($compressed));
-      echo $compressed;
-    }
-  }
 }
 ob_end_flush();

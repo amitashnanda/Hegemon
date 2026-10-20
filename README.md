@@ -1,131 +1,134 @@
-# Hegemon
+# Hegemon — Modern Stack
 
-**Interactive gene-expression exploration and Boolean implication analysis for biologists.**
+**Interactive gene-expression and Boolean implication analysis with an isolated modern scientific runtime.**
 
-Hegemon helps researchers compare genes, discover Boolean relationships, select sample populations, and investigate clinical and survival outcomes. This repository contains the updated Boolean Lab interface and legacy-compatible scientific tools, derived from [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon).
+This branch packages the separately maintained **Hegemon_Updated** application in the same structured layout as the native variant, with an Apptainer dependency image and local launchers. Original software: Debashis Sahoo, Boolean Lab, UC San Diego; upstream [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon).
 
 ![Hegemon workspace](assets/images/manual/04-workspace.png)
 
-[User manual](manual.html) · [Dataset configuration](#dataset-configuration) · [Testing](#testing) · [Security](SECURITY.md)
+[Native-stack branch](https://github.com/amitashnanda/Hegemon/tree/main) · [User manual](manual.html) · [Security](SECURITY.md) · [Branches/publication](doc/PUBLISHING.md)
 
-## Choose a Branch
+## Branch Differences
 
-| Branch | Purpose | Runtime |
+| Branch | Application source | Runtime |
 | --- | --- | --- |
-| **`main` — this branch** | Updated interface running on the native legacy-compatible stack, including the deployed ARCHS4 optimizations | Apache/PHP 7.2, Java 8, Python 2.7, R and LaTeX |
-| [`modern-stack`](https://github.com/amitashnanda/Hegemon/tree/modern-stack) | Separately maintained updated-stack application with the same structured layout | PHP 8.4, Java 21, Python 3, R and LaTeX in Apptainer |
+| `main` | Deployed updated native-stack variant, including its ARCHS4-specific loading/rendering optimizations | Existing Apache/PHP 7.2, Java 8, Python 2.7, R and LaTeX |
+| **`modern-stack` — this branch** | Separately maintained Hegemon_Updated source, reorganized without replacing its scientific implementation | PHP 8.4, Java 21, Python 3, R and LaTeX in Apptainer |
 
-The modern branch is based on the separately maintained Hegemon_Updated source, not an automatic conversion of this branch. Features and performance fixes must be compared before merging. See [branch/publication guidance](doc/PUBLISHING.md).
+This is not simply the native branch with newer interpreter names. Do **not** assume that its separately sourced frontend/backend includes every native-branch large-dataset optimization. Test an intended workload before deployment or merging fixes between variants.
 
 ## Features
 
-- Browse study categories and search datasets, accession IDs, gene symbols, and probe IDs.
-- Explore expression using interactive scatterplots, sample hover, mouse/keyboard zoom, pan, and rectangular selection.
-- Render large populations with a canvas point layer and paginated sample tables, without subsampling.
-- Highlight patient information; create, rename, combine, intersect, subtract, and export sample groups.
-- Run MiDReG/Boolean, correlation, differential, population-summary, and survival analyses when their data requirements are met.
-- Export CSV, survival R code, scientific PNG/JPEG/SVG/PDF figures, and combined PDF reports.
-- Open the illustrated **How to use** manual from the workspace.
+- Study categories, dataset search/provenance links, gene/probe lookup, and expression exploration.
+- Interactive scatterplots with hover, zoom/pan, threshold overlays, rectangular sample selection, and reset controls.
+- Clinical highlighting, sample-group set operations, population summaries, and downloadable selections.
+- MiDReG/Boolean relationships, correlation, differential analysis, box/violin plots, Kaplan–Meier survival, and scientific reports when the necessary processed data are available.
+- PNG/JPEG/SVG/PDF figures, CSV, survival R scripts, and an illustrated **How to use** manual.
+
+Gene A is plotted on x and Gene B on y. Dataset selection does not automatically plot; use **Find probes → Explore expressions**. Default blue/green points distinguish samples with/without eligible survival metadata, not biological classes.
 
 ## Requirements
 
-This branch targets **Linux with native Apache/PHP**. A Mac can access a Linux preview through SSH; the supplied Apache launcher is not a native macOS/Windows installer.
+- A **Linux** host with an administrator-approved Apptainer installation. No GPU is needed.
+- A readable private registry and approved processed datasets; neither is downloaded or included.
+- A writable checkout/runtime directory and space for a substantial scientific dependency image and temporary extraction/build files.
+- Building the dependency image requires internet access and an approved fakeroot/user-namespace setup or an administrator-operated build host. It does not install packages in the host environment.
 
-| Component | Reference stack tested in the source installation |
-| --- | --- |
-| Apache / PHP | Apache 2.4.29; PHP 7.2.24 with the Apache PHP module |
-| PHP extensions | GD, JSON, ctype, POSIX; scientific process execution must be permitted |
-| Java | JDK 8; the source installation used Oracle 8 update 45 |
-| Python | 2.7.17; NumPy 1.13.3, SciPy 0.19.1, Matplotlib 2.1.1, pandas 0.22.0, Pillow 5.1.0, bitarray 0.8.1 |
-| R | 4.4.1 with `survival` 3.7.0; `ggplot2` optional because a base-R violin fallback is included |
-| PDF reports | TeX Live 2017 / pdfTeX 1.40.18 |
-| Browser | Modern JavaScript/SVG/canvas support |
+### Modern reference stack
 
-No GPU, npm build, SQL database, application container, or Java web server is needed. Perl is not required by the current web-analysis routes. Java, Python, R, and LaTeX are helper processes launched by PHP.
+The existing reference image used PHP **8.4.26**, OpenJDK **21.0.12.1**, Python **3.13.5**, R **4.5.0** with `survival` **3.8.3**, and Debian's **TeX Live 2025/dev**. The supplied recipe uses **Debian trixie** packages plus the reference Python requirements. New builds can receive distribution/security updates; these observations are not a fully pinned reproducibility lock. Installed package manifests are written into the image under `/opt/hegemon/`.
 
-> These historical interpreter versions are obsolete. Compatibility is not a security endorsement. Do not replace default system interpreters or install obsolete packages system-wide. Use an approved existing environment, or consider the isolated modern branch. Public deployment needs an administrator's review.
+The recipe includes PHP/GD, Java, scientific Python packages, R/survival/ggplot2, LaTeX, and optional browser/PDF test utilities. PHP orchestrates Java/Python/R/LaTeX; Java is not the web server. No npm build, SQL database, or application GPU is required.
 
-## Run Locally
+## Local Setup with Apptainer
 
 ### 1. Obtain this branch
 
 ```bash
-git clone --branch main https://github.com/amitashnanda/Hegemon.git
+git clone --branch modern-stack https://github.com/amitashnanda/Hegemon.git
 cd Hegemon
 ```
 
-These commands apply after the prepared branches have been published. If you already have this checkout, simply enter its root.
+These commands apply once the prepared branch is published. In an existing clone, stop previews and use `git switch modern-stack`.
 
-### 2. Supply your private dataset registry
+### 2. Configure your private registry
 
 ```bash
 test -f explore.conf || cp config/explore.conf.example explore.conf
 ```
 
-Edit `explore.conf` so its paths point to your approved processed files. It is deliberately ignored by Git. **Data are not included or downloaded automatically**; a registry alone is insufficient.
+Edit the ignored `explore.conf`. Paths must match the **container-side** read-only data locations you will bind. The Kim example assumes `/data/kim-2010-bladder-...`; a `source=GSE13507` accession becomes a dataset-provenance link.
 
-### 3. Configure your approved runtime paths
+Required expression exploration files are the matrix (`expr`) and matching byte-offset probe index (`index`). Clinical/survival, header annotations, probe information, stored thresholds, and Boolean vectors enable additional features. Companion `*-thr.txt` and `*-bv.txt` may be found from a shared dataset prefix even when not explicit registry lines. Supply a consistent processed dataset, not only the registry.
 
-Defaults use `java`, `python2.7`, `R`, and `pdflatex` from the environment's PATH. If needed:
-
-```bash
-test -f config/localstack.local.php || cp config/localstack.example.php config/localstack.local.php
-```
-
-Edit the placeholder paths in the ignored local file. Nonempty `HEGEMON_CONFIG`, `HEGEMON_JAVA`, `HEGEMON_PYTHON`, `HEGEMON_R`, and `HEGEMON_PDFLATEX` environment values take precedence over configuration defaults. Do not commit host-specific overrides.
-
-The preview's default module layout is Ubuntu's `/usr/lib/apache2/modules`, including `libphp7.2.so`. On a different approved Linux layout, set `HEGEMON_APACHE_BIN`, `HEGEMON_APACHE_ROOT`, `HEGEMON_APACHE_MODULE_DIR`, `HEGEMON_APACHE_PHP_MODULE`, and/or `HEGEMON_MIME_TYPES` as appropriate. No system Apache configuration is modified.
-
-### 4. Check and launch
+### 3. Build a dependency image
 
 ```bash
-bash scripts/check-stack.sh
-HEGEMON_PORT=8092 bash scripts/run-local.sh
+bash scripts/build-apptainer.sh
 ```
 
-Open **http://127.0.0.1:8092/Hegemon/index.html** on that machine. The launcher recompiles ignored Java classes using the selected JDK, then starts a separate, unprivileged **loopback-only Apache/PHP preview**. Keep the terminal open; **Ctrl-C stops only this preview**, not the existing system web service.
+The default output is ignored `runtime/modern/hegemon-modern.sif`. Set `HEGEMON_APPTAINER_BIN` if Apptainer is not on PATH, and `HEGEMON_APPTAINER_IMAGE` for a different output path. The script refuses to overwrite an existing image. It defaults to `--fakeroot`; if that is unavailable, ask an administrator to build the image on an approved host. `HEGEMON_APPTAINER_FAKEROOT=0` disables that flag for a build environment that already supplies the required privilege; it does not grant privilege.
 
-Both `tmpdir/` and `runtime/` must be writable by the preview account. Runtime configuration, PID, and logs are generated under `runtime/main/port-8092/`. To choose another port, change `HEGEMON_PORT`; to select another registry, set `HEGEMON_CONFIG=/absolute/path/to/explore.conf`.
+**The new image contains dependencies only.** It does not bake in application source, real registries, processed datasets, user IDs, or host paths. Do not commit SIF/OCI images, and do not upload a historical image merely because its filename looks correct: old images can retain private data in their layers.
 
-### 5. Optional: open the remote preview from a Mac
+### 4. Start the local application
 
-In a second Mac terminal, replace the SSH destination with your own:
+Replace the host directory below with the folder containing your approved Kim files:
+
+```bash
+HEGEMON_PORT=8084 bash scripts/run-apptainer.sh \
+  --data /absolute/path/to/processed-kim:/data
+```
+
+Open **http://127.0.0.1:8084/Hegemon/index.html** on that Linux host. Keep the terminal open; **Ctrl-C stops the preview**.
+
+The runner binds the checkout **read-only**, the private registry **read-only**, and each explicitly approved data directory **read-only**. Writable Java build output, plots, caches, and runtime state stay under ignored `runtime/modern/`. Source Java is compiled for Java 21 inside the image. The existing host environment, public Apache, and original applications are not modified.
+
+For multiple processed-data directories, repeat the option:
+
+```bash
+HEGEMON_PORT=8084 bash scripts/run-apptainer.sh \
+  --data /absolute/path/to/study-one:/data/study-one \
+  --data /absolute/path/to/study-two:/data/study-two
+```
+
+Use those container paths in the registry. An existing absolute-path registry can instead retain its paths by explicitly binding each approved host data directory to the **same** absolute container path. The launcher rejects root/system/application destination mounts and does not automatically bind all directories from a registry or bypass filesystem permissions.
+
+### 5. Optional Mac SSH tunnel
+
+In a Mac terminal, replace the SSH destination:
 
 ```bash
 ssh -N -o ExitOnForwardFailure=yes \
-  -L 127.0.0.1:19092:127.0.0.1:8092 YOUR_USER@YOUR_SERVER
+  -L 127.0.0.1:19094:127.0.0.1:8084 YOUR_USER@YOUR_SERVER
 ```
 
-Open **http://127.0.0.1:19092/Hegemon/index.html** on the Mac. `19092` is the Mac port; `8092` is the remote preview port. If a local port is busy, check it with `lsof -nP -iTCP:19092 -sTCP:LISTEN` and choose another local port. Keep both the preview and SSH terminals open.
+Then open **http://127.0.0.1:19094/Hegemon/index.html** on the Mac. Keep both terminals open. Change the Mac port independently if busy; the remote port must match `HEGEMON_PORT`. The application listens only on loopback, not a new public address.
 
-## Dataset Configuration
+## Runtime Settings
 
-Root `explore.conf` is the default registry. Each section registers an ID, display name, processed-file paths, study/category key, and source. The example template uses Kim 2010 bladder cancer (`B2.1`, GEO `GSE13507`) with **placeholder paths**.
-
-| Field/file | Role |
+| Setting | Purpose |
 | --- | --- |
-| `expr` / `*-expr.txt` | Probe-by-sample expression matrix; required |
-| `index` / `*-idx.txt` | Probe annotations and byte offsets into the exact expression matrix; required |
-| `survival` | Sample-linked outcomes and/or patient information for the corresponding features |
-| `indexHeader` / `*-ih.txt` | Supplementary sample/header annotations for legacy-compatible exports |
-| `info` / `*-info.txt` | Probe-level information used by ranking and related tools |
-| `*-thr.txt` | Stored StepMiner thresholds |
-| `*-bv.txt` | Precomputed Boolean vectors used by Boolean/genome-wide tools |
+| `HEGEMON_APPTAINER_BIN` | Apptainer executable; default `apptainer` |
+| `HEGEMON_APPTAINER_IMAGE` | Dependency SIF; default `runtime/modern/hegemon-modern.sif` |
+| `HEGEMON_CONFIG` | Private host registry; default root `explore.conf`, bound at `/registry/explore.conf` |
+| `HEGEMON_PORT` | Loopback port; default `8084` |
+| `HEGEMON_WORKERS` | PHP development-server workers; default `4`, allowed `1`–`16` |
+| `HEGEMON_RUNTIME_DIR` | Local writable outputs/classes/cache; default `runtime/modern/` |
 
-Threshold and Boolean-vector companions may be inferred from the registered dataset prefix even without separate registry lines. Keep matching files together. The registry does not contain expression values or grant access to restricted directories. The actual web/preview account must be able to traverse and read the approved paths.
+For an already approved native modern stack, `bash scripts/check-stack.sh` and `bash scripts/run-local.sh` provide an alternative PHP 8.4 CLI preview. Edit ignored `config/runtime.local.php`, based on `config/runtime.example.php`, or set the `HEGEMON_PYTHON`, `HEGEMON_JAVA`, `HEGEMON_R`, and `HEGEMON_PDFLATEX` environment values. Native compilation needs Java 21. This route is optional and is not a request to upgrade the legacy host's system packages.
 
-Changes are read on subsequent requests; refresh an open page to reload its catalogue. No rebuild is required. Dataset source accessions/URLs appear as provenance links. Category keys filter discovery, not filesystem permissions or authentication.
+The web server here is **PHP's development server inside Apptainer**, using a restrictive router. It is intended for local validation, not public production traffic. `.htaccess` alone is ineffective for this server. Administrator-reviewed production hosting is a separate deployment task.
 
-### First analysis with Kim 2010
+## Example Analysis
 
-1. Open **Bladder cancer → View**, or search for `B2.1` / `GSE13507`.
-2. Select **Kim 2010 bladder cancer Overall** and inspect its source information.
-3. Keep **TYROBP** and **FCER1G**, click **Find probes**, then **Explore expressions**. Dataset selection alone does not draw a plot.
-4. Hover/zoom/pan, or choose **Select samples** and draw a rectangle to create a population.
-5. Highlight patient-information values and compare groups using set operations or population analysis.
-6. Export results; survival needs eligible outcomes, and PDF generation needs writable runtime storage plus the scientific/PDF dependencies.
+1. Select **Bladder cancer → View** and the registered Kim 2010 dataset (`B2.1`).
+2. Inspect dataset information, keep **TYROBP / FCER1G**, and use **Find probes → Explore expressions**.
+3. Hover/zoom or draw a rectangle with **Select samples** to create a population.
+4. Highlight patient information, use group set operations, and run supported population analyses.
+5. Export a figure, selected samples, survival script, or PDF report. Eligible outcomes and corresponding processed companions must exist; not all datasets have every capability.
 
-Gene A is on the x-axis; Gene B is on the y-axis. Default blue/green colors distinguish samples with/without eligible survival metadata; they are not biological classes. Open **How to use** for the complete illustrated workflow.
+Open **How to use** for the full illustrated guide. Tutorial illustrations/downloads refer to public GEO GSE13507, not bundled raw processed datasets.
 
 ## Project Structure
 
@@ -133,56 +136,42 @@ Gene A is on the x-axis; Gene B is on the y-axis. Default blue/green colors dist
 Hegemon/
 ├── index.html, workspace.html, manual.html  Public pages
 ├── api.php, explore.php, stats.php         Stable entrypoints
-├── app/                                   PHP implementation and scientific/data libraries
-├── config/                                Public templates and ignored local overrides
-├── assets/                                CSS, JavaScript, images, vendor libraries, tutorial assets
-├── Images/.htaccess                       Old image-URL redirects only
-├── scripts/                               Native launch/build/check/test helpers; Python/R helpers
-├── tools/                                 Java source; compiled classes are ignored
-├── tmpdir/                                Ignored generated figures/reports/caches
-├── runtime/                               Ignored private preview/test state
-├── tests/                                 Portable packaging/API/browser checks
-├── doc/                                   Architecture, preparation and publication notes
-└── explore.conf                           Private registry; intentionally untracked
+├── app/                                   Modern PHP application/scientific implementation
+├── config/                                Public examples and ignored local overrides
+├── assets/                                CSS, JavaScript, images, vendor/tutorial assets
+├── scripts/                               Launch/build/check/router/test helpers
+│   └── python/                            Python 3 scientific helpers
+├── containers/apptainer/                   Dependency-only recipe and Python requirements
+├── tools/                                 Java source; runtime classes are ignored
+├── tmpdir/                                Local outputs; container overlays its runtime plots
+├── runtime/modern/                        Ignored image, compiled classes, caches and outputs
+├── tests/                                 Packaging, API and browser checks
+└── doc/                                   Architecture, preparation, publication and runtime notes
 ```
-
-Keep `tools/` and `tmpdir/` at the root. Old asset URLs redirect to the structured assets; public entry filenames and dataset/gene URL parameters are preserved.
 
 ## Testing
 
-With a private preview running and Kim data configured:
+With the preview and approved Kim files available:
 
 ```bash
 python3 tests/test_packaging.py
-python3 tests/smoke.py --base-url http://127.0.0.1:8092/Hegemon/ --render
+python3 tests/smoke.py --base-url http://127.0.0.1:8084/Hegemon/ --render
 ```
 
-The API smoke test checks routing protection, gene lookup, complete sample counts, group summaries, CSV, clinical alignment, and optional PNG/box/violin/PDF/survival generation. Select another dataset with `--dataset`, `--gene-a`, and `--gene-b`. These are actual-data tests, not a claim that every registered dataset has been validated.
+The checks exercise page/asset routes, internal-file protection, probe lookup, full sample counts, independent group means, CSV, clinical alignment, error handling, and optional PNG/box/violin/PDF/survival generation. Dataset/probe arguments can select another registered cohort. Optional `scripts/test-browser.sh` needs a separate Playwright/Chromium test environment; see [runtime notes](doc/APPTAINER.md).
 
-Optional browser checks need a separate Python 3 environment with Playwright and a Chromium installation:
+These are actual-data checks, not a promise that every registry entry or large population has been validated. See [preparation/verification notes](doc/REPOSITORY_PREPARATION.md) for what was actually run. A fresh internet-backed dependency-image build is distinct from testing application source inside an existing compatible dependency image.
 
-```bash
-HEGEMON_TEST_PYTHON=/path/to/test-environment/bin/python \
-HEGEMON_TEST_BASE_URL=http://127.0.0.1:8092/Hegemon/ bash scripts/test-browser.sh
-```
+## Troubleshooting and Security
 
-Set `HEGEMON_CHROMIUM` for an existing Chromium executable, or install Playwright's browser into that test environment. Python 3/Playwright are test tools only; the application remains on Python 2.7.
+- **Missing datasets:** check the actual container paths, explicit data binds, registry category keys, and the invoking user's read/traverse permissions.
+- **Fakeroot/build unavailable:** use an administrator-approved build host; do not install/upgrade host runtimes or bypass permissions.
+- **Figure/report errors:** check scientific packages, read-only data access, and writable runtime storage; not every cohort has survival data.
+- **Busy port/tunnel:** choose another preview/Mac port and keep the remote tunnel destination consistent.
+- **Stale image/code:** the dependency image intentionally contains no code; the runner mounts this branch's source and recompiles its Java. Changing branches still requires stopping the preview and checking registry paths.
 
-## Security and Publication
-
-Read [SECURITY.md](SECURITY.md) before sharing or deploying. Real registries, raw datasets, credentials, private overrides, runtime outputs, logs, Java classes, SIF/OCI images, and old validation archives are excluded. The three GSE13507 tutorial downloads under `assets/manual/` are explicitly identified public examples, not an allowance to upload other sample data. Analytics is disabled in this public source copy.
-
-`.gitignore` does not remove already committed secrets. Review staged/history contents before pushing. Public Apache must enforce `.htaccess` or equivalent restrictions, and only output/cache directories should need web-account write access. Testing under your username does not prove production's web account has equal permissions. A private preview is not a production installation procedure.
-
-## Documentation
-
-- [Illustrated user manual](manual.html) — open through the running website for the HTML guide.
-- [Architecture and processed files](doc/ARCHITECTURE.md).
-- [Repository preparation and exclusions](doc/REPOSITORY_PREPARATION.md).
-- [Branch and publication instructions](doc/PUBLISHING.md).
-
-Preview errors are recorded under `runtime/main/port-PORT/`; scientific outputs stay under ignored `tmpdir/`. For missing datasets, check the actual registry and account access. For failed reports, check configured binaries, packages, and output permissions. Do not publish logs or registry contents without review.
+Real registries, datasets, private config, credentials, output reports, logs, compiled artifacts, and container images are ignored. Analytics is disabled. Review staged content and history before pushing; ignore rules cannot erase committed secrets. Read [SECURITY.md](SECURITY.md), [architecture](doc/ARCHITECTURE.md), [Apptainer notes](doc/APPTAINER.md), and [publication guidance](doc/PUBLISHING.md).
 
 ## Credits and License
 
-**Original software:** Debashis Sahoo, Boolean Lab, UC San Diego. Upstream: [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon). See [LICENSE](LICENSE) for GNU GPL version 3 and bundled vendor notices for third-party terms. Dataset use and attribution remain subject to each original provider's terms.
+Original Hegemon: **Debashis Sahoo, Boolean Lab, UC San Diego**. See [LICENSE](LICENSE) for GNU GPL version 3 and bundled vendor notices. Data access, use, and attribution remain subject to each provider's terms.

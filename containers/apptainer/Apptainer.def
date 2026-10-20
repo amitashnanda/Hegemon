@@ -1,0 +1,53 @@
+Bootstrap: docker
+From: debian:trixie-slim
+
+%files
+    containers/apptainer/python-requirements.txt /opt/hegemon/python-requirements.txt
+
+%post
+    set -eu
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl fonts-dejavu-core php-cli php-gd \
+        python3 python3-venv python3-numpy python3-matplotlib python3-scipy \
+        python3-pandas python3-pil python3-requests python3-bitarray python3-rpy2 \
+        r-base-core r-cran-survival r-cran-ggplot2 default-jdk-headless \
+        chromium nodejs texlive-latex-extra texlive-pictures texlive-fonts-recommended poppler-utils
+    python3 -m venv --system-site-packages /opt/venv
+    /opt/venv/bin/pip install --no-cache-dir -r /opt/hegemon/python-requirements.txt
+    printf '%s\n' '#!/bin/sh' 'exec /opt/venv/bin/python "$@"' > /usr/bin/python
+    chmod 755 /usr/bin/python
+    mkdir -p /app/Hegemon/tools /app/Hegemon/tmpdir /registry
+    dpkg-query -W > /opt/hegemon/debian-packages.txt
+    /opt/venv/bin/pip freeze > /opt/hegemon/python-packages.txt
+    rm -rf /var/lib/apt/lists/*
+
+%environment
+    export PATH=/opt/venv/bin:$PATH
+    export HEGEMON_PYTHON=/opt/venv/bin/python
+    export HEGEMON_JAVA=java
+    export HEGEMON_R=R
+    export HEGEMON_PDFLATEX=pdflatex
+    export HEGEMON_CONFIG=/registry/explore.conf
+    export MPLCONFIGDIR=/app/Hegemon/tmpdir/matplotlib
+    export PYTHONDONTWRITEBYTECODE=1
+    export OPENBLAS_NUM_THREADS=1
+    export OMP_NUM_THREADS=1
+    export MKL_NUM_THREADS=1
+
+%test
+    set -eu
+    php -r 'exit(PHP_VERSION_ID >= 80400 && extension_loaded("gd") ? 0 : 1);'
+    java -version
+    /opt/venv/bin/python -c 'import numpy, scipy, matplotlib, pandas, PIL, bitarray, lifelines'
+    R --slave -e 'library(survival); library(ggplot2)'
+    pdflatex --version | head -n 1
+
+%runscript
+    printf '%s\n' 'Dependency-only Hegemon image: launch with scripts/run-apptainer.sh and explicit read-only data/registry binds.'
+    exit 2
+
+%labels
+    org.opencontainers.image.title Hegemon modern scientific dependencies
+    org.opencontainers.image.description No application source, private registry, or processed dataset is baked into this image

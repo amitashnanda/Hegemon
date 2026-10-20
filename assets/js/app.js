@@ -3,7 +3,6 @@
 
   const element = id => document.getElementById(id);
   const search = window.HegemonDatasetSearch;
-  const plotTools = window.HegemonPlotTools;
   const defaultGenes = {a: 'TYROBP', b: 'FCER1G'};
   const palette = ['#6c5ce7', '#149d91', '#e58137', '#d3588e', '#447ed1', '#729d35', '#9b6bca', '#bf5b45'];
   const groupPalette = ['#d55e00', '#b5179e', '#007f8c', '#cc4263', '#665191', '#8c6d00', '#4c6a92', '#975a16'];
@@ -23,10 +22,6 @@
   let drag = null;
   let datasetSearch = null;
   let searchLibraryLoaded = false;
-  let rasterLayer = null;
-  let chartFrame = null;
-  let samplePage = 0;
-  let sampleById = new Map();
 
   function announce(message, error = false) {
     const status = element('app-status');
@@ -312,12 +307,6 @@
   }
 
   function clearPlot() {
-    if (chartFrame !== null) cancelAnimationFrame(chartFrame);
-    chartFrame = null;
-    rasterLayer = null;
-    sampleById.clear();
-    samplePage = 0;
-    element('sample-pagination').hidden = true;
     state.plot = null;
     state.domain = null;
     state.fullDomain = null;
@@ -469,11 +458,10 @@
     element('chart-container').setAttribute('aria-busy', 'true');
     announce('Reading the selected expression rows…');
     try {
-      const response = plotTools.decode(await request('plot', 'plot', {id: state.dataset.id, geneA: element('probe-a').value, geneB: element('probe-b').value, compact: '1'}));
+      const response = await request('plot', 'plot', {id: state.dataset.id, geneA: element('probe-a').value, geneB: element('probe-b').value});
       if (generation !== state.generation) return;
       state.plot = response;
-      state.plot.samples = response.samples || [];
-      sampleById = new Map(state.plot.samples.map(sample => [sample.id, sample]));
+      state.plot.samples = (response.samples || []).map(sample => ({id: String(sample.id), x: sample.x, y: sample.y, color: sample.color, hasSurvival: sample.hasSurvival}));
       const paired = state.plot.samples.filter(sample => finite(sample.x) && finite(sample.y));
       state.tableSelection.clear();
       if (!paired.length) {
@@ -481,7 +469,9 @@
         announce('These probes have no paired numeric measurements. Choose another probe pair.', true);
         return;
       }
-      state.fullDomain = plotTools.bounds(paired);
+      const valuesX = paired.map(sample => sample.x);
+      const valuesY = paired.map(sample => sample.y);
+      state.fullDomain = {x: [Math.min(...valuesX) - 0.5, Math.max(...valuesX) + 0.5], y: [Math.min(...valuesY) - 0.5, Math.max(...valuesY) + 0.5]};
       state.domain = {x: [...state.fullDomain.x], y: [...state.fullDomain.y]};
       element('chart-empty').hidden = true;
       element('scatter-chart').removeAttribute('hidden');
@@ -539,12 +529,6 @@
   function invertY(value) { return state.domain.y[0] + (geometry.height - geometry.bottom - value) / (geometry.height - geometry.top - geometry.bottom) * (state.domain.y[1] - state.domain.y[0]); }
 
   function renderChart() {
-    if (state.plot?.samples.length > plotTools.svgLimit) {
-      if (chartFrame === null) chartFrame = requestAnimationFrame(() => { chartFrame = null; drawChart(); });
-    } else drawChart();
-  }
-
-  function drawChart() {
     if (!state.plot || !state.domain) return;
     const grid = element('chart-grid');
     const axes = element('chart-axes');
@@ -580,39 +564,19 @@
     const clinicalActive = state.clinicalField && state.clinical.size > 0;
     const clinicalFiltered = clinicalActive && (state.clinicalSelection !== '' || state.clinicalRange !== null);
     const groupFocus = colors.size > 0;
-    function appearance(sample) {
+    const fragment = document.createDocumentFragment();
+    for (const sample of state.plot.samples) {
+      if (!finite(sample.x) || !finite(sample.y) || sample.x < state.domain.x[0] || sample.x > state.domain.x[1] || sample.y < state.domain.y[0] || sample.y > state.domain.y[1]) continue;
       const selected = colors.has(sample.id);
       const value = state.clinical.get(sample.id) || '';
       const highlighted = clinicalActive && matchesClinical(value);
       const color = groupFocus && !selected ? '#b8c2c7' : clinicalActive ? state.clinicalColors.get(value) || '#a5b1b9' : colors.get(sample.id) || sample.color;
       const opacity = groupFocus ? selected ? clinicalFiltered && !highlighted ? 0.42 : 1 : 0.2 : clinicalFiltered ? highlighted ? 1 : 0.13 : 0.78;
-      return {color, opacity, radius: groupFocus ? selected ? 5.2 : 2.8 : clinicalFiltered && highlighted ? 4.4 : 3.4,
-        stroke: groupFocus && selected ? '#18343c' : null, strokeWidth: groupFocus && selected ? 1.2 : 0,
-        selected, highlighted: Boolean(clinicalFiltered && highlighted)};
+      const circle = svgNode('circle', {cx: scaleX(sample.x), cy: scaleY(sample.y), r: groupFocus ? selected ? 5.2 : 2.8 : clinicalFiltered && highlighted ? 4.4 : 3.4, fill: color, opacity, stroke: groupFocus && selected ? '#18343c' : 'none', 'stroke-width': groupFocus && selected ? 1.2 : 0, 'data-sample-id': sample.id, 'data-group-selected': String(selected), 'data-clinical-highlight': String(Boolean(clinicalFiltered && highlighted)), class: 'sample-point'});
+      circle.append(svgNode('title', {}, `${sample.id}: ${numeric(sample.x)}, ${numeric(sample.y)}`));
+      fragment.append(circle);
     }
-    const chart = element('scatter-chart');
-    const large = state.plot.samples.length > plotTools.svgLimit;
-    chart.dataset.renderer = large ? 'canvas' : 'svg';
-    chart.dataset.sampleCount = String(state.plot.samples.length);
-    if (large) {
-      if (!rasterLayer) rasterLayer = new plotTools.RasterPlot();
-      points.append(rasterLayer.element);
-      rasterLayer.draw(state.plot.samples, geometry, state.domain, appearance);
-    } else {
-      rasterLayer = null;
-      const fragment = document.createDocumentFragment();
-      for (const sample of state.plot.samples) {
-        if (!finite(sample.x) || !finite(sample.y) || sample.x < state.domain.x[0] || sample.x > state.domain.x[1] || sample.y < state.domain.y[0] || sample.y > state.domain.y[1]) continue;
-        const style = appearance(sample);
-        const circle = svgNode('circle', {cx: scaleX(sample.x), cy: scaleY(sample.y), r: style.radius,
-          fill: style.color, opacity: style.opacity, stroke: style.stroke || 'none', 'stroke-width': style.strokeWidth,
-          'data-sample-id': sample.id, 'data-group-selected': String(style.selected),
-          'data-clinical-highlight': String(style.highlighted), class: 'sample-point'});
-        circle.append(svgNode('title', {}, `${sample.id}: ${numeric(sample.x)}, ${numeric(sample.y)}`));
-        fragment.append(circle);
-      }
-      points.append(fragment);
-    }
+    points.append(fragment);
     const focusSummary = element('selection-summary');
     focusSummary.hidden = !groupFocus;
     focusSummary.textContent = groupFocus ? `${colors.size} sample IDs in checked groups · selected points are larger and outlined; other points are faded gray. Uncheck all groups to restore population colors.` : '';
@@ -681,7 +645,8 @@
   }
 
   function addGroup(name, samples, color = null, checked = true) {
-    const identifiers = [...new Set(samples)].filter(identifier => sampleById.has(identifier));
+    const known = new Set(state.plot?.samples.map(sample => sample.id) || []);
+    const identifiers = [...new Set(samples)].filter(identifier => known.has(identifier));
     if (!identifiers.length) { announce('This selection contains no samples from the current study.', true); return false; }
     state.groups.push({id: `group-${state.nextGroup++}`, name, samples: new Set(identifiers), color: color && /^#[0-9a-f]{6}$/i.test(color) ? color : groupPalette[state.groups.length % groupPalette.length], checked});
     renderGroups();
@@ -879,24 +844,13 @@
     return (state.plot?.samples || []).filter(sample => (!union.size || union.has(sample.id)) && `${sample.id} ${state.clinical.get(sample.id) || ''}`.toLowerCase().includes(query));
   }
 
-  function renderSampleTable(resetPage = true) {
+  function renderSampleTable() {
     const body = element('sample-table-body');
     body.replaceChildren();
     if (!state.plot) return;
-    if (resetPage) samplePage = 0;
-    if (state.plot.samples.length > 1000 && state.tab !== 'samples') return;
     const samples = visibleSamples();
-    const paginated = samples.length > 1000;
-    const pageSize = paginated ? 200 : samples.length || 1;
-    const pages = Math.max(1, Math.ceil(samples.length / pageSize));
-    samplePage = Math.max(0, Math.min(pages - 1, samplePage));
-    element('sample-pagination').hidden = !paginated;
-    element('sample-page-label').textContent = `Page ${samplePage + 1} of ${pages}`;
-    element('sample-page-previous').disabled = samplePage === 0;
-    element('sample-page-next').disabled = samplePage === pages - 1;
-    const shown = paginated ? samples.slice(samplePage * pageSize, (samplePage + 1) * pageSize) : samples;
     const fragment = document.createDocumentFragment();
-    for (const sample of shown) {
+    for (const sample of samples) {
       const row = document.createElement('tr');
       const checkCell = document.createElement('td');
       const checkbox = document.createElement('input');
@@ -915,8 +869,6 @@
     }
     body.append(fragment);
     element('sample-table-context').textContent = `${samples.length} samples shown${selectedUnion().size ? ' from the checked groups’ union' : ' from the study'}. ${state.tableSelection.size} individually checked.`;
-    if (paginated) element('sample-table-context').textContent = `Samples ${samplePage * pageSize + 1}–${samplePage * pageSize + shown.length} of ${samples.length}. ${state.tableSelection.size} individually checked. Select all checks every matching sample across pages.`;
-    element('select-all-samples').setAttribute('aria-label', paginated ? `Select all ${samples.length} matching samples across pages` : 'Select all visible sample rows');
     element('table-group-button').disabled = !state.tableSelection.size;
     element('select-all-samples').checked = samples.length > 0 && samples.every(sample => state.tableSelection.has(sample.id));
   }
@@ -952,7 +904,7 @@
     const continuous = numericValues && !/^c\s/i.test(name) && (counts.size > 12 || /^n\s/i.test(name) || name === 'time');
     if (continuous) {
       const numbers = [...counts.keys()].filter(value => value.trim() !== '' && Number.isFinite(Number(value))).map(Number);
-      state.clinicalExtent = plotTools.extent(numbers);
+      state.clinicalExtent = [Math.min(...numbers), Math.max(...numbers)];
     }
     [...counts.keys()].sort((left, right) => left.localeCompare(right, undefined, {numeric: true})).forEach((value, index) => {
       const fraction = state.clinicalExtent && value.trim() !== '' && Number.isFinite(Number(value)) ? (Number(value) - state.clinicalExtent[0]) / (state.clinicalExtent[1] - state.clinicalExtent[0] || 1) : null;
@@ -1129,23 +1081,6 @@
   }
 
   function bindEvents() {
-    const pagination = document.createElement('div');
-    pagination.id = 'sample-pagination';
-    pagination.className = 'sample-toolbar';
-    pagination.hidden = true;
-    for (const [identifier, label, direction] of [['sample-page-previous', 'Previous samples', -1], ['sample-page-next', 'Next samples', 1]]) {
-      const button = document.createElement('button');
-      button.id = identifier;
-      button.type = 'button';
-      button.textContent = label;
-      button.addEventListener('click', () => { samplePage += direction; renderSampleTable(false); });
-      pagination.append(button);
-    }
-    const pageLabel = document.createElement('span');
-    pageLabel.id = 'sample-page-label';
-    pageLabel.setAttribute('aria-live', 'polite');
-    pagination.append(pageLabel);
-    element('sample-table-context').after(pagination);
     element('dataset-select').addEventListener('change', () => {
       const dataset = state.datasets.find(candidate => candidate.id === element('dataset-select').value);
       const query = search.parseQuery(element('dataset-search').value);
@@ -1318,11 +1253,10 @@
         for (const [name, value] of Object.entries({x: Math.min(drag.start.x, drag.current.x), y: Math.min(drag.start.y, drag.current.y), width: Math.abs(drag.current.x - drag.start.x), height: Math.abs(drag.current.y - drag.start.y)})) brush.setAttribute(name, value);
       } else {
         const identifier = event.target.dataset?.sampleId;
-        const position = rasterLayer ? chartPosition(event) : null;
-        const sample = identifier ? sampleById.get(identifier) : position?.inside ? rasterLayer.hitTest(position.x, position.y) : null;
         const tooltip = element('sample-tooltip');
-        tooltip.hidden = !sample;
-        if (!sample) return;
+        tooltip.hidden = !identifier;
+        if (!identifier) return;
+        const sample = state.plot.samples.find(candidate => candidate.id === identifier);
         const rectangle = element('chart-container').getBoundingClientRect();
         tooltip.textContent = `${sample.id} · A: ${numeric(sample.x)} · B: ${numeric(sample.y)}${state.clinical.has(sample.id) ? ` · ${state.clinical.get(sample.id) || '(missing)'}` : ''}`;
         tooltip.style.left = `${Math.max(8, Math.min(event.clientX - rectangle.left + 12, rectangle.width - 240))}px`;
@@ -1376,9 +1310,7 @@
     element('import-groups').addEventListener('change', event => importGroups(event.target.files[0]).catch(report));
     element('download-plot').addEventListener('click', () => {
       if (!state.plot) return;
-      if (chartFrame !== null) { cancelAnimationFrame(chartFrame); chartFrame = null; drawChart(); }
       const copy = chart.cloneNode(true);
-      if (rasterLayer) copy.querySelector('#chart-points').replaceChildren(document.createTextNode('HEGEMON_VECTOR_POINTS'));
       copy.setAttribute('xmlns', svgNamespace);
       copy.removeAttribute('hidden');
       copy.setAttribute('width', geometry.width);
@@ -1386,8 +1318,7 @@
       const style = svgNode('style');
       style.textContent = '.grid-line{stroke:#e8edf4;stroke-width:1}.axis-line{stroke:#96a4b7}.tick-label{font:12px sans-serif;fill:#65748b}.axis-title{font:13px sans-serif;fill:#27364d}.threshold-line{stroke:#149d91;stroke-width:1.5;stroke-dasharray:6 4}.threshold-line.bound{stroke-width:1;opacity:.4;stroke-dasharray:2 4}.chart-brush{display:none}';
       copy.prepend(style);
-      const serialized = new XMLSerializer().serializeToString(copy);
-      download(rasterLayer ? serialized.replace('HEGEMON_VECTOR_POINTS', () => rasterLayer.vectorMarkup()) : serialized, `${state.dataset.id}-${state.plot.genes.x.id}-${state.plot.genes.y.id}.svg`, 'image/svg+xml');
+      download(new XMLSerializer().serializeToString(copy), `${state.dataset.id}-${state.plot.genes.x.id}-${state.plot.genes.y.id}.svg`, 'image/svg+xml');
     });
     element('advanced-frame').addEventListener('load', () => {
       const page = element('advanced-frame').contentWindow;
@@ -1435,7 +1366,7 @@
       if (parameters.has('A')) element('gene-a').value = parameters.get('A');
       if (parameters.has('B')) element('gene-b').value = parameters.get('B');
     }
-    const response = await request('catalogue', 'datasets', {key: state.key || search.catalogueKey(), summary: '1'});
+    const response = await request('catalogue', 'datasets', {key: state.key || search.catalogueKey()});
     state.datasets = response.datasets || [];
     const inaccessible = response.meta?.unavailableCount || 0;
     element('catalogue-count').textContent = response.meta?.totalCount ?? state.datasets.length + inaccessible;

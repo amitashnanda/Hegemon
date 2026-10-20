@@ -165,7 +165,7 @@ function validateLegacyRequest($config) {
     if (isset($request[$name]) && (strlen($request[$name]) > 256 || preg_match('/[\\"\x27`$<>\x00-\x1f]/', $request[$name]))) { legacyRequestError('Invalid gene or probe label.'); }
   }
   foreach (['sthr', 'pthr', 'num'] as $name) {
-    if (!localstackIsNumeric($request[$name]) || !is_finite((float) $request[$name]) || $request[$name] < 0) { legacyRequestError('Invalid analysis threshold.'); }
+    if (!is_numeric($request[$name]) || !is_finite((float) $request[$name]) || $request[$name] < 0) { legacyRequestError('Invalid analysis threshold.'); }
   }
   if ($request['pthr'] > 1 || $request['num'] > 10000) { legacyRequestError('Analysis limit exceeded.'); }
   if ($request['clinical'] !== '' && !ctype_digit($request['clinical'])) { legacyRequestError('Invalid clinical field.'); }
@@ -177,7 +177,7 @@ function validateLegacyRequest($config) {
     legacyRequestError('Invalid plot parameter.');
   }
   foreach (['orix', 'oriy', 'top', 'left', 'width', 'height'] as $name) {
-    if (isset($request[$name]) && (!localstackIsNumeric($request[$name]) || !is_finite((float) $request[$name]) || abs((float) $request[$name]) > 1000000)) { legacyRequestError('Invalid rectangle coordinates.'); }
+    if (isset($request[$name]) && (!is_numeric($request[$name]) || !is_finite((float) $request[$name]) || abs((float) $request[$name]) > 1000000)) { legacyRequestError('Invalid rectangle coordinates.'); }
   }
   if ($request['CT'] !== '' && !preg_match('/^\d+(?:\.\d+)?(?:,\d+(?:\.\d+)?)?$/', $request['CT'])) { legacyRequestError('Invalid censor time.'); }
   if (in_array($request['go'], ['getdatasetsjson'], true)) { return; }
@@ -869,7 +869,7 @@ echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
   <script src=\"assets/js/Groups.js?v=f42fb423cdb3\" type=\"text/javascript\"></script>
   <script src=\"assets/vendor/select2-4.1.0-rc.0.min.js\" crossorigin=\"anonymous\" referrerpolicy=\"no-referrer\"></script>";
   if (($_GET['embed'] ?? '') === '1') {
-    echo '<link rel="stylesheet" href="assets/css/scientific-results.css?v=4bb712f30554"/><script defer src="assets/js/plot-performance.js?v=760f46bd4524"></script><script defer src="assets/js/scientific-results.js?v=97f67ce04063"></script>';
+    echo '<link rel="stylesheet" href="assets/css/scientific-results.css?v=4bb712f30554"/><script defer src="assets/js/scientific-results.js?v=9bf328b12fe5"></script>';
   }
     
   echo file_get_contents(dirname(__DIR__) . "/assets/html/gtag.html");

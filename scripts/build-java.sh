@@ -9,5 +9,4 @@ if [[ -z "$javac_binary" ]]; then
     java_path="$(command -v "$java_binary")"
     javac_binary="$(dirname "$(readlink -f "$java_path")")/javac"
 fi
-[[ -x "$javac_binary" ]] || { printf '%s\n' 'Set HEGEMON_JAVAC to an approved Java 8 compiler.' >&2; exit 1; }
-"$javac_binary" -source 1.8 -target 1.8 tools/*.java
+"$javac_binary" --release 21 tools/*.java

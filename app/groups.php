@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/bootstrap.php';
-
 function callGroupsPostCommands($file, $groups, $param) {
   if (strcmp($_POST["go"], "survival") == 0) {
     survivalDataUri($file, $_POST['file'], $_POST['id'],
@@ -379,7 +377,7 @@ function getPatientGroup($file, $id, $clinical, $value) {
       }
       if (strcmp($type, "time") == 0 || strncmp($type, "n ", 2) == 0) {
         list($min, $max) = explode(":", $value);
-        if (localstackIsNumeric($v) && $v >= $min && $v <= $max) {
+        if (is_numeric($v) && $v >= $min && $v <= $max) {
           $res[$list[0]] = $v;
         }
       }
@@ -706,7 +704,7 @@ ax.set_ylabel('$yn expression', fontsize=10)
   }
   fwrite($fp, "fig.savefig('$outprefix.png', dpi=100)");
   fclose($fp);
-  $cmd = "HOME=tmpdir ".escapeshellarg(getenv("HEGEMON_PYTHON") ?: "/usr/bin/python")." $outfile";
+  $cmd = "HOME=tmpdir ".escapeshellarg(getenv("HEGEMON_PYTHON") ?: "python3")." $outfile";
   if ( ($fh = popen($cmd, 'w')) === false )
     die("Open failed: plot process error\n");
   pclose($fh);
@@ -934,19 +932,15 @@ function violinplotImage($file, $expr, $id, $x, $y, $xn, $yn, $groups) {
     
     
     $res = "
+        if (!requireNamespace('ggplot2', quietly=TRUE)) stop('ggplot2 must be installed by the server administrator')
+        library(ggplot2)
         d <-  c(" . join(",", $data) . ")
         l <-  c(\"" . join("\",\"", $labels) . "\")
         l <- factor(l, levels=unique(l))
         c <-  c(\"" . join("\",\"", $clrs) . "\")
         df <- data.frame(d = d, l = l)
-        if (requireNamespace('ggplot2', quietly=TRUE)) {
-          library(ggplot2)
-          p <- ggplot(df, aes(x = l, y = d, fill = l)) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) + geom_point(position = position_jitter(width = 0.2), size = 2) + scale_fill_manual(values = setNames(c, levels(l))) + labs(x = '', y = paste('$z_id', ':', '$z_n', 'Gene Expression')) + theme_minimal()
-          ggsave(filename = '$outprefix.png', plot = p, width = 12, height = 9, dpi = 72, limitsize = FALSE)
-        } else {
-          source('" . dirname(__DIR__) . "/scripts/r/native-violin.R')
-          localstack_violin(d, l, c, '$outprefix.png', paste('$z_id', ':', '$z_n', 'Gene Expression'))
-        }
+        p <- ggplot(df, aes(x = l, y = d, fill = l)) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) + geom_point(position = position_jitter(width = 0.2), size = 2) + scale_fill_manual(values = setNames(c, levels(l))) + labs(x = '', y = paste('$z_id', ':', '$z_n', 'Gene Expression')) + theme_minimal()
+        ggsave(filename = '$outprefix.png', plot = p, width = 12, height = 9, dpi = 72, limitsize = FALSE)
     ";
     
     
@@ -1073,9 +1067,9 @@ function searchGroupArea($file, $expr, $id, $x, $y, $xn, $yn,
     $sfile = $h->getSurv();
     if ($clinical !== '' && ctype_digit((string) $clinical) && (int) $clinical > 0 && $sfile && is_readable($sfile)) {
       $handle = fopen($sfile, 'r');
-      $headers = localstackCsvRead($handle, "\t");
+      $headers = fgetcsv($handle, 0, "\t", '"', '');
       if ((int) $clinical >= count($headers ?: [])) { fclose($handle); throw new InvalidArgumentException('Unknown clinical field.'); }
-      while (($row = localstackCsvRead($handle, "\t")) !== false) { $clinicalValues[$row[0] ?? ''] = $row[(int) $clinical] ?? ''; }
+      while (($row = fgetcsv($handle, 0, "\t", '"', '')) !== false) { $clinicalValues[$row[0] ?? ''] = $row[(int) $clinical] ?? ''; }
       fclose($handle);
     }
     $csv = ($_GET['csv'] ?? $_POST['csv'] ?? '') === '1';
@@ -1084,7 +1078,7 @@ function searchGroupArea($file, $expr, $id, $x, $y, $xn, $yn,
       header('Content-Type: text/csv; charset=utf-8');
       header('Content-Disposition: attachment; filename="Hegemon-selection.csv"');
       $output = fopen('php://output', 'w');
-      localstackCsvWrite($output, ['ArrayID', 'Value', $xn, $yn]);
+      fputcsv($output, ['ArrayID', 'Value', $xn, $yn], ',', '"', '');
     } else {
       echo count($selected) . "\nArrayID\tValue\t$xn\t$yn\n";
     }
@@ -1092,7 +1086,7 @@ function searchGroupArea($file, $expr, $id, $x, $y, $xn, $yn,
       $sample = $h->headers[$index];
       if (!array_key_exists($sample, $selected)) { continue; }
       $row = [$sample, $clinicalValues[$sample] ?? '', $e1[$index], $e2[$index]];
-      if ($csv) { localstackCsvWrite($output, $row); } else { echo implode("\t", $row) . "\n"; }
+      if ($csv) { fputcsv($output, $row, ',', '"', ''); } else { echo implode("\t", $row) . "\n"; }
     }
     if ($output) { fclose($output); }
   }
