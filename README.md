@@ -1,6 +1,6 @@
 # Hegemon
 
-**Interactive gene-expression exploration and Boolean implication analysis for biologists.**
+**HIERARCHICAL EXPLORATION OF GENE EXPRESSION MICROARRAYS ONLINE FOR ANALYZING AND VISUALIZING BIOLOGICAL DATASETS**
 
 Hegemon helps researchers compare genes, discover Boolean relationships, select sample populations, and investigate clinical and survival outcomes. This repository contains the updated Boolean Lab interface and legacy-compatible scientific tools, derived from [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon).
 
@@ -12,10 +12,10 @@ Hegemon helps researchers compare genes, discover Boolean relationships, select 
 
 | Branch | Purpose | Runtime |
 | --- | --- | --- |
-| **`main` — this branch** | Updated interface running on the native legacy-compatible stack, including the deployed ARCHS4 optimizations | Apache/PHP 7.2, Java 8, Python 2.7, R and LaTeX |
+| **`main`** | Updated interface running on the native legacy-compatible stack, including the deployed optimizations to handle large datasets | Apache/PHP 7.2, Java 8, Python 2.7, R and LaTeX |
 | [`modern-stack`](https://github.com/amitashnanda/Hegemon/tree/modern-stack) | Separately maintained updated-stack application with the same structured layout | PHP 8.4, Java 21, Python 3, R and LaTeX in Apptainer |
 
-The modern branch is based on the separately maintained Hegemon_Updated source, not an automatic conversion of this branch. Features and performance fixes must be compared before merging. See [branch/publication guidance](doc/PUBLISHING.md).
+The modern branch is based on the separately maintained Hegemon 2.0 source, not an automatic conversion of this branch. Features and performance fixes must be compared before merging. See [branch/publication guidance](doc/PUBLISHING.md).
 
 ## Features
 
@@ -183,6 +183,12 @@ Read [SECURITY.md](SECURITY.md) before sharing or deploying. Real registries, ra
 
 Preview errors are recorded under `runtime/main/port-PORT/`; scientific outputs stay under ignored `tmpdir/`. For missing datasets, check the actual registry and account access. For failed reports, check configured binaries, packages, and output permissions. Do not publish logs or registry contents without review.
 
-## Credits and License
+## Acknowledgements
 
-**Original software:** Debashis Sahoo, Boolean Lab, UC San Diego. Upstream: [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon). See [LICENSE](LICENSE) for GNU GPL version 3 and bundled vendor notices for third-party terms. Dataset use and attribution remain subject to each original provider's terms.
+- **Original software and research framework:** Boolean Lab, led by **Debashis Sahoo**, University of California San Diego, for developing Hegemon and its scientific analysis framework.
+- **Upstream source code:** [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon), the original codebase on which this updated application is based.
+- **Contributor:** [Amitash Nanda](https://github.com/amitashnanda), for contributions to the updated interface, backend integration, performance improvements, runtime packaging, and documentation.
+
+## License
+
+See [LICENSE](LICENSE) for GNU GPL version 3 and bundled vendor notices for third-party terms. Dataset use and attribution remain subject to each original provider's terms.
