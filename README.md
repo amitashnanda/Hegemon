@@ -172,6 +172,16 @@ These are actual-data checks, not a promise that every registry entry or large p
 
 Real registries, datasets, private config, credentials, output reports, logs, compiled artifacts, and container images are ignored. Analytics is disabled. Review staged content and history before pushing; ignore rules cannot erase committed secrets. Read [SECURITY.md](SECURITY.md), [architecture](doc/ARCHITECTURE.md), [Apptainer notes](doc/APPTAINER.md), and [publication guidance](doc/PUBLISHING.md).
 
-## Credits and License
+## Acknowledgements
 
-Original Hegemon: **Debashis Sahoo, Boolean Lab, UC San Diego**. See [LICENSE](LICENSE) for GNU GPL version 3 and bundled vendor notices. Data access, use, and attribution remain subject to each provider's terms.
+- **Original software and research framework:** Boolean Lab, led by **Debashis Sahoo**, University of California San Diego, for developing Hegemon and its scientific analysis framework.
+- **Upstream source code:** [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon), the original codebase on which this updated application is based.
+- **Contributor:** [Amitash Nanda](https://github.com/amitashnanda), for contributions to the updated interface, backend integration, modern runtime packaging, and documentation.
+
+### Computing Resources
+
+This research used resources of the National Energy Research Scientific Computing Center (NERSC), a U.S. Department of Energy Office of Science User Facility located at Lawrence Berkeley National Laboratory, on the Perlmutter supercomputer using NERSC award [BER]-ERCAP[ERCAP0037181].
+
+## License
+
+See [LICENSE](LICENSE) for GNU GPL version 3 and bundled vendor notices for third-party terms. Data access, use, and attribution remain subject to each provider's terms.
