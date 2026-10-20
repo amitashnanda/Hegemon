@@ -4,6 +4,8 @@
 
 Hegemon helps researchers compare genes, discover Boolean relationships, select sample populations, and investigate clinical and survival outcomes. This repository contains the updated Boolean Lab interface and legacy-compatible scientific tools, derived from [sahoo00/Hegemon](https://github.com/sahoo00/Hegemon).
 
+**Live application:** [Open Hegemon](http://hegemon.ucsd.edu/Hegemon/index.html) — the updated frontend running on the native legacy-compatible stack represented by this repository's `main` branch.
+
 ![Hegemon workspace](assets/images/manual/04-workspace.png)
 
 [User manual](manual.html) · [Dataset configuration](#dataset-configuration) · [Testing](#testing) · [Security](SECURITY.md)
