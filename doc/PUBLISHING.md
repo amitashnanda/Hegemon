@@ -18,6 +18,8 @@ git diff --cached --check
 
 Review both staged and committed content, including binary/tutorial assets. Never use `git add -f` for a registry, dataset, image, generated report, or local configuration. `.gitignore` does not erase previously committed files. If private data has entered history, stop and resolve that history before pushing; deleting the working file is insufficient.
 
+The initial source import deliberately preserves inherited legacy formatting. `git diff --cached --check` can report upstream trailing whitespace in those imported files; review it rather than reformatting the scientific source as part of a publication-only copy. New setup/documentation changes should not add whitespace problems.
+
 The repository excludes the source clones' Git histories, real registries, raw datasets, compiled classes, historical validation reports, personal environment files, and prebuilt SIF/OCI archives. The modern branch contains a clean container recipe; build its image locally rather than adding an old image to Git.
 
 ## Push When Ready
@@ -35,13 +37,15 @@ These commands publish content to GitHub; run them yourself only after review. I
 ## Switch Variants
 
 ```bash
-git switch main
+git checkout main
 ```
 
 or:
 
 ```bash
-git switch modern-stack
+git checkout modern-stack
 ```
 
 Stop previews before switching. Ignored registries and runtime files remain on disk across a switch; verify that registry paths match the selected host/container layout, and use separate runtime directories for each variant.
+
+These checkout commands work with the lab server's Git 2.17.1; Git 2.23 and newer also support `git switch`.
