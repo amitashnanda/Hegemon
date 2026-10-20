@@ -43,6 +43,8 @@ This branch targets **Linux with native Apache/PHP**. A Mac can access a Linux p
 | PDF reports | TeX Live 2017 / pdfTeX 1.40.18 |
 | Browser | Modern JavaScript/SVG/canvas support |
 
+Local setup also needs Bash, Git, and `sha256sum`. Java must be a **JDK with `javac`**, not only a Java runtime. Python 3 is optional for the supplied validation tests; the application itself uses Python 2.7.
+
 No GPU, npm build, SQL database, application container, or Java web server is needed. Perl is not required by the current web-analysis routes. Java, Python, R, and LaTeX are helper processes launched by PHP.
 
 > These historical interpreter versions are obsolete. Compatibility is not a security endorsement. Do not replace default system interpreters or install obsolete packages system-wide. Use an approved existing environment, or consider the isolated modern branch. Public deployment needs an administrator's review.
@@ -56,15 +58,22 @@ git clone --branch main https://github.com/amitashnanda/Hegemon.git
 cd Hegemon
 ```
 
-These commands apply after the prepared branches have been published. If you already have this checkout, simply enter its root.
+If you already have this checkout, stop any preview, enter its root, and select `git checkout main`.
 
-### 2. Supply your private dataset registry
+### 2. Download the public Kim example and select its registry
 
 ```bash
-test -f explore.conf || cp config/explore.conf.example explore.conf
+bash scripts/fetch-kim-example.sh
+mkdir -p runtime/kim-example/native
+test -f runtime/kim-example/native/explore.conf || cp config/explore.conf.example runtime/kim-example/native/explore.conf
+export HEGEMON_CONFIG="$PWD/runtime/kim-example/native/explore.conf"
 ```
 
-Edit `explore.conf` so its paths point to your approved processed files. It is deliberately ignored by Git. **Data are not included or downloaded automatically**; a registry alone is insufficient.
+The explicit download command retrieves only the five public Kim files from [upstream Hegemon](https://github.com/sahoo00/Hegemon/tree/2300b4964c1e79326031a4cef2cc7c192764374b), pinned to revision `2300b4964c1e79326031a4cef2cc7c192764374b` and verified against `config/kim-example.sha256`. Allow approximately **70 MB for the extracted data**, plus temporary Git download space and network access to GitHub. Re-running verifies existing files rather than overwriting them. Application startup never downloads data.
+
+This example registers **only `B1`**, using the same name and four processed-file fields as [upstream `explore.conf`](https://github.com/sahoo00/Hegemon/blob/2300b4964c1e79326031a4cef2cc7c192764374b/explore.conf). The template adds `key=bladder:` and `source=GSE13507` for category discovery and provenance. Its relative `data/kim-2010/` paths resolve from the application root, which the supplied launcher and web entrypoints select. No manual path editing is needed for this example.
+
+The downloaded `data/` and selected registry under `runtime/` are ignored by Git. Your existing root `explore.conf` is not overwritten. To use your own processed data instead, copy `config/explore.conf.example` to an ignored registry, replace its paths and metadata, and export `HEGEMON_CONFIG` to that file's absolute path. Root `explore.conf` remains the default when `HEGEMON_CONFIG` is unset. A registry alone is insufficient; the preview account must be able to read every referenced file.
 
 ### 3. Configure your approved runtime paths
 
@@ -87,6 +96,8 @@ HEGEMON_PORT=8092 bash scripts/run-local.sh
 
 Open **http://127.0.0.1:8092/Hegemon/index.html** on that machine. The launcher recompiles ignored Java classes using the selected JDK, then starts a separate, unprivileged **loopback-only Apache/PHP preview**. Keep the terminal open; **Ctrl-C stops only this preview**, not the existing system web service.
 
+These commands check and use an already approved native stack; they do **not** install Apache, PHP, Java, Python, R, or LaTeX. If those legacy dependencies are unavailable, use the `modern-stack` container route rather than replacing system packages. Keep the `HEGEMON_CONFIG` export from step 2 in the launch terminal.
+
 Both `tmpdir/` and `runtime/` must be writable by the preview account. Runtime configuration, PID, and logs are generated under `runtime/main/port-8092/`. To choose another port, change `HEGEMON_PORT`; to select another registry, set `HEGEMON_CONFIG=/absolute/path/to/explore.conf`.
 
 ### 5. Optional: open the remote preview from a Mac
@@ -102,7 +113,20 @@ Open **http://127.0.0.1:19092/Hegemon/index.html** on the Mac. `19092` is the Ma
 
 ## Dataset Configuration
 
-Root `explore.conf` is the default registry. Each section registers an ID, display name, processed-file paths, study/category key, and source. The example template uses Kim 2010 bladder cancer (`B2.1`, GEO `GSE13507`) with **placeholder paths**.
+Root `explore.conf` is the default registry; `HEGEMON_CONFIG` can select another ignored file. Each section registers an ID, display name, processed-file paths, study/category key, and source. The public template follows upstream's Kim 2010 bladder cancer example (`B1`, GEO `GSE13507`):
+
+```ini
+title=Hierarchical Exploration of Gene Expression Microarrays Online
+
+[B1]
+name= Kim 2010 bladder cancer Cancer Specific
+expr= data/kim-2010/kim-2010-bladder-expr.txt
+index= data/kim-2010/kim-2010-bladder-idx.txt
+survival= data/kim-2010/kim-2010-bladder-os.txt
+indexHeader= data/kim-2010/kim-2010-bladder-ih.txt
+key= bladder:
+source= GSE13507
+```
 
 | Field/file | Role |
 | --- | --- |
@@ -116,12 +140,14 @@ Root `explore.conf` is the default registry. Each section registers an ID, displ
 
 Threshold and Boolean-vector companions may be inferred from the registered dataset prefix even without separate registry lines. Keep matching files together. The registry does not contain expression values or grant access to restricted directories. The actual web/preview account must be able to traverse and read the approved paths.
 
+Upstream publishes `expr`, `idx`, `os`, `ih`, and `thr` for this example. The four registry fields select the first four files; the matching `kim-2010-bladder-thr.txt` is found by the shared expression prefix. It does **not** publish an `info` or `bv` companion here, so this minimal example does not demonstrate features that require those files. For those analyses, supply a complete processed dataset. The `B2.1` label visible in existing tutorial screenshots belongs to the lab registry; this reproducible upstream example deliberately uses `B1`.
+
 Changes are read on subsequent requests; refresh an open page to reload its catalogue. No rebuild is required. Dataset source accessions/URLs appear as provenance links. Category keys filter discovery, not filesystem permissions or authentication.
 
 ### First analysis with Kim 2010
 
-1. Open **Bladder cancer → View**, or search for `B2.1` / `GSE13507`.
-2. Select **Kim 2010 bladder cancer Overall** and inspect its source information.
+1. Open **Bladder cancer → View**, or search for `B1` / `GSE13507`.
+2. Select **Kim 2010 bladder cancer Cancer Specific** and inspect its source information.
 3. Keep **TYROBP** and **FCER1G**, click **Find probes**, then **Explore expressions**. Dataset selection alone does not draw a plot.
 4. Hover/zoom/pan, or choose **Select samples** and draw a rectangle to create a population.
 5. Highlight patient-information values and compare groups using set operations or population analysis.
@@ -152,11 +178,12 @@ Keep `tools/` and `tmpdir/` at the root. Old asset URLs redirect to the structur
 
 ## Testing
 
-With a private preview running and Kim data configured:
+In a second terminal at this checkout, with the Kim `B1` preview running:
 
 ```bash
 python3 tests/test_packaging.py
-python3 tests/smoke.py --base-url http://127.0.0.1:8092/Hegemon/ --render
+python3 tests/test_kim_example.py
+python3 tests/smoke.py --base-url http://127.0.0.1:8092/Hegemon/ --dataset B1 --render
 ```
 
 The API smoke test checks routing protection, gene lookup, complete sample counts, group summaries, CSV, clinical alignment, and optional PNG/box/violin/PDF/survival generation. Select another dataset with `--dataset`, `--gene-a`, and `--gene-b`. These are actual-data tests, not a claim that every registered dataset has been validated.
@@ -165,7 +192,7 @@ Optional browser checks need a separate Python 3 environment with Playwright and
 
 ```bash
 HEGEMON_TEST_PYTHON=/path/to/test-environment/bin/python \
-HEGEMON_TEST_BASE_URL=http://127.0.0.1:8092/Hegemon/ bash scripts/test-browser.sh
+HEGEMON_TEST_BASE_URL=http://127.0.0.1:8092/Hegemon/ bash scripts/test-browser.sh --dataset B1 --key bladder
 ```
 
 Set `HEGEMON_CHROMIUM` for an existing Chromium executable, or install Playwright's browser into that test environment. Python 3/Playwright are test tools only; the application remains on Python 2.7.
