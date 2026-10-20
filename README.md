@@ -49,7 +49,7 @@ git clone --branch modern-stack https://github.com/amitashnanda/Hegemon.git
 cd Hegemon
 ```
 
-These commands apply once the prepared branch is published. In an existing clone, stop previews and use `git switch modern-stack`.
+These commands apply once the prepared branch is published. In an existing clone, stop previews and use `git checkout modern-stack` (compatible with Git 2.17 and newer).
 
 ### 2. Configure your private registry
 
